@@ -355,6 +355,9 @@ static void SetupRouterOpts(const t_options& Options, t_router_opts *RouterOpts)
     }
 	RouterOpts->routing_failure_predictor = Options.routing_failure_predictor;
     RouterOpts->routing_budgets_algorithm = Options.routing_budgets_algorithm;
+
+    bool route_clock = ClockModelingUtil::is_clock_routed(Options.clock_modeling_method);
+    RouterOpts->route_clock = route_clock;
 }
 
 static void SetupAnnealSched(const t_options& Options,
