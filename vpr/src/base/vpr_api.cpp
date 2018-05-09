@@ -1056,7 +1056,7 @@ void vpr_analysis(t_vpr_setup& vpr_setup, const t_arch& Arch) {
     if (vpr_setup.TimingEnabled) {
         //Load the net delays
         net_delay = alloc_net_delay(&net_delay_ch);
-        load_net_delay_from_routing(net_delay);
+        load_net_delay_from_routing(net_delay, vpr_setup.RouterOpts.route_clock);
 
 #ifdef ENABLE_CLASSIC_VPR_STA
         slacks = alloc_and_load_timing_graph(vpr_setup.Timing);
@@ -1071,7 +1071,8 @@ void vpr_analysis(t_vpr_setup& vpr_setup, const t_arch& Arch) {
             Arch.grid_logic_tile_area,
             vpr_setup.RoutingArch.directionality,
             vpr_setup.RoutingArch.wire_to_rr_ipin_switch,
-            vpr_setup.TimingEnabled, net_delay
+            vpr_setup.TimingEnabled, net_delay,
+            vpr_setup.RouterOpts.route_clock
 #ifdef ENABLE_CLASSIC_VPR_STA
             , slacks, vpr_setup.Timing
 #endif

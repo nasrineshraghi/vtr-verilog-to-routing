@@ -175,7 +175,8 @@ static float get_timing_driven_expected_cost(int inode, int target_node,
 static int get_expected_segs_to_target(int inode, int target_node,
         int *num_segs_ortho_dir_ptr);
 
-static bool timing_driven_check_net_delays(vtr::vector_map<ClusterNetId, float *> &net_delay);
+static bool timing_driven_check_net_delays(vtr::vector_map<ClusterNetId, float *> &net_delay,
+                                           bool route_clock);
 
 static int mark_node_expansion_by_bin(int source_node, int target_node,
         t_rt_node * rt_node, t_bb bounding_box, int num_sinks);
@@ -379,7 +380,7 @@ bool try_timing_driven_route(t_router_opts router_opts,
                 vpr_throw(VPR_ERROR_TIMING, __FILE__, __LINE__, "Classic VPR and Tatum critical paths do not match (%g and %g respectively)", get_critical_path_delay(), 1e9 * critical_path.delay());
             }
 #endif
-            VTR_ASSERT_SAFE(timing_driven_check_net_delays(net_delay));
+            VTR_ASSERT_SAFE(timing_driven_check_net_delays(net_delay, router_opts.route_clock));
         }
 
         //Output progress
@@ -525,7 +526,7 @@ bool try_timing_driven_route(t_router_opts router_opts,
 
     if (routing_is_successful) {
         if (timing_info) {
-            timing_driven_check_net_delays(net_delay);
+            timing_driven_check_net_delays(net_delay, router_opts.route_clock);
             vtr::printf_info("Completed net delay value cross check successfully.\n");
             vtr::printf_info("Critical path: %g ns\n", 1e9 * critical_path.delay());
         }
@@ -1686,7 +1687,8 @@ static int mark_node_expansion_by_bin(int source_node, int target_node,
     return rlim;
 }
 
-static bool timing_driven_check_net_delays(vtr::vector_map<ClusterNetId, float *> &net_delay) {
+static bool timing_driven_check_net_delays(vtr::vector_map<ClusterNetId, float *> &net_delay,
+                                           bool route_clock) {
     constexpr float ERROR_TOL = 0.0001;
 
     /* Checks that the net delays computed incrementally during timing driven    *
@@ -1699,7 +1701,7 @@ static bool timing_driven_check_net_delays(vtr::vector_map<ClusterNetId, float *
     vtr::t_chunk list_head_net_delay_check_ch;
 
     net_delay_check = alloc_net_delay(&list_head_net_delay_check_ch);
-    load_net_delay_from_routing(net_delay_check);
+    load_net_delay_from_routing(net_delay_check, route_clock);
 
 	for (auto net_id : cluster_ctx.clb_nlist.nets()) {
         for (ipin = 1; ipin < cluster_ctx.clb_nlist.net_pins(net_id).size(); ipin++) {
