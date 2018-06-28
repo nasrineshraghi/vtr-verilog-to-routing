@@ -917,7 +917,7 @@ struct t_router_opts {
 	e_stage_action doRouting;
 	enum e_routing_failure_predictor routing_failure_predictor;
 	enum e_routing_budgets_algorithm routing_budgets_algorithm;
-    enum e_clock_modeling_method clock_modeling_method; //How clock pins and nets should be handled
+    enum e_clock_modeling clock_modeling; //How clock pins and nets should be handled
 };
 
 struct t_analysis_opts {
