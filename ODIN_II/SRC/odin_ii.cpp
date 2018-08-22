@@ -360,7 +360,7 @@ void get_options(int argc, char** argv) {
 			.action(argparse::Action::STORE_TRUE)
 			;
 
-	other_grp.add_argument(global_args.black_box_latches, "-black_box_latches")
+	other_grp.add_argument(global_args.black_box_latches, "--black_box_latches")
 			.help("Output all Latches as Black Boxes")
 			.default_value("false")
 			.action(argparse::Action::STORE_TRUE)

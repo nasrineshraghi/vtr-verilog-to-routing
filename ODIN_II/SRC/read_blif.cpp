@@ -96,13 +96,15 @@ void rb_create_top_driver_nets(const char *instance_name_prefix, hashtable_t *ou
 void rb_look_for_clocks();// not sure if this is needed
 void add_top_input_nodes(FILE *file, hashtable_t *output_nets_hash);
 void rb_create_top_output_nodes(FILE *file);
-int read_tokens (char *buffer, hard_block_models *models, FILE *file, hashtable_t *output_nets_hash);
+int read_tokens (char *buffer, hard_block_models *models, FILE *output_blif, FILE *file, hashtable_t *output_nets_hash);   
 static void dum_parse (char *buffer, FILE *file);
 void create_internal_node_and_driver(FILE *file, hashtable_t *output_nets_hash);
 short assign_node_type_from_node_name(char * output_name);// function will decide the node->type of the given node
 short read_bit_map_find_unknown_gate(int input_count, nnode_t * node, FILE *file);
+void create_blackbox_node(hard_block_models *models, FILE *output_blif, FILE *file, hashtable_t *output_nets_hash);
+void restore_latch_node_and_driver(char *retore_name, FILE *output_blif, FILE *file, hashtable_t *output_nets_hash);
 void create_latch_node_and_driver(FILE *file, hashtable_t *output_nets_hash);
-void create_hard_block_nodes(hard_block_models *models, FILE *file, hashtable_t *output_nets_hash);
+void create_hard_block_nodes(char* submodule_name, hard_block_models *models, FILE *file, hashtable_t *output_nets_hash);
 void hook_up_nets(hashtable_t *output_nets_hash);
 void hook_up_node(nnode_t *node, hashtable_t *output_nets_hash);
 char* search_clock_name(FILE *file);
@@ -143,6 +145,9 @@ void read_blif(char * blif_file)
 	verilog_netlist = allocate_netlist();
 	/*Opening the blif file */
 	FILE *file = vtr::fopen (local_blif, "r");
+	FILE *output_blif;
+	if(!strstr(global_args.output_file,"default"))
+		output_blif = vtr::fopen(global_args.output_file,"w+");
 
 	int num_lines = count_blif_lines(file);
 
@@ -163,10 +168,36 @@ void read_blif(char * blif_file)
 	hard_block_models *models = create_hard_block_models();
 	printf("\n");
 	char buffer[READ_BLIF_BUFFER];
-	while (vtr::fgets(buffer, READ_BLIF_BUFFER, file) && read_tokens(buffer, models, file, output_nets_hash))
-	{	// Print a progress bar indicating completeness.
+	short skip = 0;
+	while(1)
+	{
+
+		if(!vtr::fgets(buffer, READ_BLIF_BUFFER, file))
+			break;
+		
+		if( strstr(buffer,".model latch|") )
+		{
+			skip = 1;
+			continue;
+		}
+		else if(skip && strstr(buffer,".end") )
+		{
+			skip = 0;
+			continue; 
+		}
+		else if( !strstr(buffer,"latch|") && output_blif != NULL)
+		{
+			fprintf(output_blif,"%s",buffer);
+		}
+
+		if(!skip)
+			if(!read_tokens(buffer, models, output_blif, file, output_nets_hash))
+				break;
+
+		// Print a progress bar indicating completeness.
 		position = print_progress_bar((++line_count)/(double)num_lines, position, 50, wall_time() - time);
 	}
+
 	free_hard_block_models(models);
 	/* Now look for high-level signals */
 	rb_look_for_clocks();
@@ -188,7 +219,7 @@ void read_blif(char * blif_file)
  * Parses the given line from the blif file. Returns TRUE if there are more lines
  * to read.
  *-------------------------------------------------------------------------------------------*/
-int read_tokens (char *buffer, hard_block_models *models, FILE *file, hashtable_t *output_nets_hash)
+int read_tokens (char *buffer, hard_block_models *models, FILE *output_blif, FILE *file, hashtable_t *output_nets_hash)
 {
 	/* Figures out which, if any token is at the start of this line and *
 	 * takes the appropriate action.                                    */
@@ -221,7 +252,7 @@ int read_tokens (char *buffer, hard_block_models *models, FILE *file, hashtable_
 			}
 			else if (strcmp(token,".subckt") == 0)
 			{
-				create_hard_block_nodes(models, file, output_nets_hash);
+				create_blackbox_node(models, output_blif, file, output_nets_hash);
 			}
 			else if (strcmp(token,".end")==0)
 			{
@@ -313,25 +344,115 @@ short assign_node_type_from_node_name(char * output_name)
 
 /*---------------------------------------------------------------------------------------------
    * function:create_latch_node_and_driver
+     to create an ff node and driver from that blackbox node
+
+	from define_ff()
+	print".subckt latch|$type|$clk|$initValue i[0]=$driver_name o[0]=%output_name"
+*-------------------------------------------------------------------------------------------*/
+void restore_latch_node_and_driver(char *retore_name, FILE *output_blif, FILE *file, hashtable_t *output_nets_hash)
+{
+
+	/* Storing the names of the input and the final output in array names */
+	char *names[5];
+
+	char buffer[READ_BLIF_BUFFER];
+	char *retore_driver = vtr::strdup(vtr::strtok (NULL, TOKENS, file, buffer));
+	char *retore_output = vtr::strdup(vtr::strtok (NULL, TOKENS, file, buffer));
+
+	char *grbg = strtok (retore_name,"|");
+	names[2] = vtr::strdup(strtok(NULL,"|"));
+	names[3] = vtr::strdup(strtok(NULL,"|"));
+	names[4] = vtr::strdup(strtok(NULL,"|"));
+
+	grbg = strtok (retore_driver,"=");
+ 	names[0] = vtr::strdup(strtok (NULL,"="));
+	
+	grbg = strtok (retore_output,"=");
+ 	names[1] = vtr::strdup(strtok (NULL,"="));
+
+	// rewrite the blackboxed latch
+	if(output_blif)
+		fprintf(output_blif, ".latch %s %s %s %s %s\n", names[0], names[1], names[2], names[3], names[4]);
+
+	nnode_t *new_node = allocate_nnode();
+	new_node->related_ast_node = NULL;
+	new_node->type = FF_NODE;
+
+	/* Read in the initial value of the latch.
+	   Possible values from a blif file are:
+	   0: LOW
+	   1: HIGH
+	   2: DON'T CARE
+	   3: UNKNOWN
+
+	   2 and 3 are treated in the same way */
+	int initial_value = atoi(names[4]);
+	if(initial_value == 0 || initial_value == 1){
+		new_node->initial_value = initial_value;
+		new_node->has_initial_value = TRUE;
+	}
+
+	/* allocate the output pin (there is always one output pin) */
+	allocate_more_output_pins(new_node, 1);
+	add_output_port_information(new_node, 1);
+
+	/* allocate the input pin */
+	allocate_more_input_pins(new_node,2);/* input[1] is clock */
+
+	/* add the port information */
+	int i;
+	for(i = 0; i < 2; i++)
+	{
+		add_input_port_information(new_node,1);
+	}
+
+	/* add names and type information to the created input pins */
+	npin_t *new_pin = allocate_npin();
+	new_pin->name = names[0];
+	new_pin->type = INPUT;
+	add_input_pin_to_node(new_node, new_pin,0);
+
+	new_pin = allocate_npin();
+	new_pin->name = names[3];
+	new_pin->type = INPUT;
+	add_input_pin_to_node(new_node, new_pin,1);
+
+	/* add a name for the node, keeping the name of the node same as the output */
+	new_node->name = make_full_ref_name(names[1],NULL, NULL, NULL,-1);
+
+	/*add this node to verilog_netlist as an ff (flip-flop) node */
+	verilog_netlist->ff_nodes = (nnode_t **)vtr::realloc(verilog_netlist->ff_nodes, sizeof(nnode_t*)*(verilog_netlist->num_ff_nodes+1));
+	verilog_netlist->ff_nodes[verilog_netlist->num_ff_nodes++] = new_node;
+
+	/*add name information and a net(driver) for the output */
+	nnet_t *new_net = allocate_nnet();
+	new_net->name = new_node->name;
+
+	new_pin = allocate_npin();
+	new_pin->name = new_node->name;
+	new_pin->type = OUTPUT;
+	add_output_pin_to_node(new_node, new_pin, 0);
+	add_driver_pin_to_net(new_net, new_pin);
+
+	output_nets_hash->add(output_nets_hash, new_node->name, strlen(new_node->name)*sizeof(char), new_net);
+
+}
+
+/*---------------------------------------------------------------------------------------------
+   * function:create_latch_node_and_driver
      to create an ff node and driver from that node
      format .latch <input> <output> [<type> <control/clock>] <initial val>
 *-------------------------------------------------------------------------------------------*/
 void create_latch_node_and_driver(FILE *file, hashtable_t *output_nets_hash)
 {
 	/* Storing the names of the input and the final output in array names */
-	char ** names = NULL;       // Store the names of the tokens
+	char *names[5];       // Store the names of the tokens
 	int input_token_count = 0; /*to keep track whether controlling clock is specified or not */
 	/*input_token_count=3 it is not and =5 it is */
 	char *ptr;
 	char buffer[READ_BLIF_BUFFER];
 	while ((ptr = vtr::strtok (NULL, TOKENS, file, buffer)) != NULL)
-	{
-		if(input_token_count == 0)
-			names = (char**)vtr::malloc((sizeof(char*)));
-		else
-			names = (char**)vtr::realloc(names, (sizeof(char*))* (input_token_count + 1));
 		names[input_token_count++] = vtr::strdup(ptr);
-	}
 
 	/* assigning the new_node */
 	if(input_token_count != 5)
@@ -341,7 +462,6 @@ void create_latch_node_and_driver(FILE *file, hashtable_t *output_nets_hash)
 		{
 			char *clock_name = search_clock_name(file);
 			input_token_count = 5;
-			names = (char**)vtr::realloc(names, sizeof(char*) * input_token_count);
 
 			if(clock_name) names[3] = vtr::strdup(clock_name);
 			else           names[3] = NULL;
@@ -418,7 +538,6 @@ void create_latch_node_and_driver(FILE *file, hashtable_t *output_nets_hash)
 	output_nets_hash->add(output_nets_hash, new_node->name, strlen(new_node->name)*sizeof(char), new_net);
 
 	/* Free the char** names */
-	vtr::free(names);
 	vtr::free(ptr);
 }
 
@@ -490,15 +609,32 @@ char* search_clock_name(FILE* file)
 }
 
 
+/*---------------------------------------------------------------------------------------------
+   * function:create_blackbox_node
+     this dispatches back to create latch in case they were black boxed
+*-------------------------------------------------------------------------------------------*/
+void create_blackbox_node(hard_block_models *models, FILE *output_blif, FILE *file, hashtable_t *output_nets_hash)
+{
+	char buffer[READ_BLIF_BUFFER];
+	char *subcircuit_name = vtr::strtok (NULL, TOKENS, file, buffer);
+
+	if(strstr(subcircuit_name, "latch") != NULL)
+	{
+		restore_latch_node_and_driver(subcircuit_name, output_blif, file,output_nets_hash);
+	}
+	else
+	{
+		create_hard_block_nodes(subcircuit_name, models, file, output_nets_hash);
+	}
+}
 
 /*---------------------------------------------------------------------------------------------
    * function:create_hard_block_nodes
      to create the hard block nodes
 *-------------------------------------------------------------------------------------------*/
-void create_hard_block_nodes(hard_block_models *models, FILE *file, hashtable_t *output_nets_hash)
+void create_hard_block_nodes(char *subcircuit_name, hard_block_models *models, FILE *file, hashtable_t *output_nets_hash)
 {
 	char buffer[READ_BLIF_BUFFER];
-	char *subcircuit_name = vtr::strtok (NULL, TOKENS, file, buffer);
 
 	/* storing the names on the formal-actual parameter */
 	char *token;

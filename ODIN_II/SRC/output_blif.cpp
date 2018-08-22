@@ -25,6 +25,11 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+
 #include "types.h"
 #include "globals.h"
 
@@ -38,11 +43,11 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include "vtr_util.h"
 #include "vtr_memory.h"
 
-short haveOutputLatchBlackbox = FALSE;
+std::vector<std::string> bb_latches;
 
+std::string make_node_conn_name(nnode_t *node);
 void depth_first_traversal_to_output(short marker_value, FILE *fp, netlist_t *netlist);
 void depth_traverse_output_blif(nnode_t *node, int traverse_mark_number, FILE *fp);
-void output_node(nnode_t *node, short traverse_number, FILE *fp);
 void define_logical_function(nnode_t *node, short type, FILE *out);
 void define_set_input_logical_function(nnode_t *node, const char *bit_output, FILE *out);
 void define_ff(nnode_t *node, FILE *out);
@@ -51,12 +56,31 @@ void output_blif_pin_connect(nnode_t *node, FILE *out);
 void add_the_blackbox_for_latches(FILE *out);
 void output_blif(char *file_name, netlist_t *netlist);
 
+
+
+std::string make_node_conn_name(nnode_t *node)
+{
+	oassert(node);
+	std::stringstream output;
+	output << node->name;
+
+	if (global_args.high_level_block != NULL && node->related_ast_node != NULL)
+	{
+		output << "^^" << std::dec << node->related_ast_node->far_tag ; 
+		output << "-" << std::dec << node->related_ast_node->high_number;
+	}
+
+	return output.str();
+}
+
 /*---------------------------------------------------------------------------
  * (function: output_blif)
  * 	The function that prints out the details for a blif formatted file
  *-------------------------------------------------------------------------*/
 void output_blif(char *file_name, netlist_t *netlist)
 {
+	oassert(netlist);
+	oassert(netlist);
 	int i;
 	int count = 0;
 	short first_time_inputs = FALSE;
@@ -92,31 +116,17 @@ void output_blif(char *file_name, netlist_t *netlist)
 			first_time_inputs = TRUE;
 		}
 
-		if (global_args.high_level_block != NULL)
+		std::string top_input_name = make_node_conn_name(netlist->top_input_nodes[i]);
+		if (top_input_name.length() + count < 79)
 		{
-			if (strlen(netlist->top_input_nodes[i]->name) + count < 79)
-				count = count + fprintf(out, " %s^^%i-%i", netlist->top_input_nodes[i]->name, netlist->top_input_nodes[i]->related_ast_node->far_tag, netlist->top_input_nodes[i]->related_ast_node->high_number);
-			else
-			{
-				/* wrapping line */
-				count = fprintf(out, " \\\n %s^^%i-%i", netlist->top_input_nodes[i]->name,netlist->top_input_nodes[i]->related_ast_node->far_tag, netlist->top_input_nodes[i]->related_ast_node->high_number);
-				count = count - 3;
-			}
+			count = count + fprintf(out, " %s", top_input_name.c_str());
 		}
 		else
 		{
-			if (strlen(netlist->top_input_nodes[i]->name) + count < 79)
-			{
-				count = count + fprintf(out, " %s", netlist->top_input_nodes[i]->name);
-			}
-			else
-			{
-				/* wrapping line */
-				count = fprintf(out, " \\\n %s", netlist->top_input_nodes[i]->name);
-				count = count - 3;
-			}
+			/* wrapping line */
+			count = fprintf(out, " \\\n %s", top_input_name.c_str());
+			count = count - 3;
 		}
-
 	}
 	fprintf(out, "\n");
 
@@ -135,27 +145,16 @@ void output_blif(char *file_name, netlist_t *netlist)
 				first_time_outputs = TRUE;
 			}
 
-			if (global_args.high_level_block != NULL)
+			std::string top_output_name = make_node_conn_name(netlist->top_output_nodes[i]);
+			if (top_output_name.length() + count < 79)
 			{
-				if ((strlen(netlist->top_output_nodes[i]->name) + count) < 79)
-					count = count + fprintf(out, " %s^^%i-%i", netlist->top_output_nodes[i]->name,netlist->top_output_nodes[i]->related_ast_node->far_tag, netlist->top_output_nodes[i]->related_ast_node->high_number);
-				else
-				{
-					/* wrapping line */
-					count = fprintf(out, "\\\n %s^^%i-%i", netlist->top_output_nodes[i]->name,netlist->top_output_nodes[i]->related_ast_node->far_tag, netlist->top_output_nodes[i]->related_ast_node->high_number);
-					count = count - 3;
-				}
+				count = count + fprintf(out, " %s", top_output_name.c_str());
 			}
 			else
 			{
-				if ((strlen(netlist->top_output_nodes[i]->name) + count) < 79)
-					count = count + fprintf(out, " %s", netlist->top_output_nodes[i]->name);
-				else
-				{
-					/* wrapping line */
-					count = fprintf(out, "\\\n %s", netlist->top_output_nodes[i]->name);
-					count = count - 3;
-				}
+				/* wrapping line */
+				count = fprintf(out, " \\\n %s", top_output_name.c_str());
+				count = count - 3;
 			}
 		}
 	}
@@ -179,35 +178,35 @@ void output_blif(char *file_name, netlist_t *netlist)
 	for (i = 0; i < netlist->num_top_output_nodes; i++)
 	{
 		/* KEN -- DPRAM WORKING HERE FOR JASON */
-		nnode_t *node = netlist->top_output_nodes[i];
-		if (node->input_pins[0]->net->driver_pin != NULL)
+		if (netlist->top_output_nodes[i]->input_pins[0]->net->driver_pin != NULL)
 		{
-			if (global_args.high_level_block != NULL)
+			std::string top_output_node = make_node_conn_name(netlist->top_output_nodes[i]);
+			std::string node_driver;
+
+			/*
+			*  Use the name of the driver pin as the name of the driver
+			*  as long as that name is set, and is not equal to the name of the output pin.
+			*
+			* 	Otherwise, use the name of the driver node.
+			*/
+			if (global_args.high_level_block == NULL
+			&& netlist->top_output_nodes[i]->input_pins[0]->net->driver_pin->name
+			&& strcmp(netlist->top_output_nodes[i]->input_pins[0]->net->driver_pin->name, netlist->top_output_nodes[i]->name))
 			{
-				fprintf(out, ".names %s^^%i-%i %s^^%i-%i\n1 1\n",
-						node->input_pins[0]->net->driver_pin->node->name,
-						node->input_pins[0]->net->driver_pin->node->related_ast_node->far_tag,
-						node->input_pins[0]->net->driver_pin->node->related_ast_node->high_number,
-						node->name,
-						node->related_ast_node->far_tag,
-						node->related_ast_node->high_number
-				);
+				node_driver = netlist->top_output_nodes[i]->input_pins[0]->net->driver_pin->name;
 			}
 			else
 			{
-				/*
-				 *  Use the name of the driver pin as the name of the driver
-				 *  as long as that name is set, and is not equal to the name of the output pin.
-				 *
-				 * 	Otherwise, use the name of the driver node.
-				 */
-				char *driver = node->input_pins[0]->net->driver_pin->name;
-				char *output = node->name;
-				if (!driver || !strcmp(driver,output))
-					driver = node->input_pins[0]->net->driver_pin->node->name;
+				node_driver = make_node_conn_name(netlist->top_output_nodes[i]->input_pins[0]->net->driver_pin->node);
+			}
 
+			if (node_driver != top_output_node)
+			{
 				/* Skip if the driver and output have the same name (i.e. the output of a flip-flop) */
-				if (strcmp(driver,output) != 0) fprintf(out, ".names %s %s\n1 1\n", driver, output);
+				fprintf(out, ".names %s %s\n1 1\n",
+					node_driver.c_str(),
+					top_output_node.c_str()
+				);
 			}
 
 		}
@@ -218,15 +217,10 @@ void output_blif(char *file_name, netlist_t *netlist)
 	fprintf(out, ".end\n");
 	fprintf(out, "\n");
 
-	/* Print out any hard block modules */
+	/* Print out any blackbox modules */
 	add_the_blackbox_for_mults(out);
 	add_the_blackbox_for_adds(out);
-
-	//Check if blackbox latches are enabled && one has been included in the BLIF file
-	if(global_args.black_box_latches && (TRUE == haveOutputLatchBlackbox))
-	{
-		add_the_blackbox_for_latches(out);
-	}
+	add_the_blackbox_for_latches(out);
 
 	output_hard_blocks(out);
 	fclose(out);
@@ -274,8 +268,106 @@ void depth_traverse_output_blif(nnode_t *node, int traverse_mark_number, FILE *f
 	{
 		/* ELSE - this is a new node so depth visit it */
 
-		/* POST traverse  map the node since you might delete */
-		output_node(node, traverse_mark_number, fp);
+		/**
+		 *  POST traverse  map the node since you might delete 
+		 *	Depending on node type, figures out what to print for this node
+		*/
+		switch (node->type)
+		{
+			case GT:
+				define_set_input_logical_function(node, "100 1\n", fp);
+				oassert(node->num_input_pins == 3);
+				oassert(node->input_pins[2] != NULL);
+				break;
+			case LT:
+				define_set_input_logical_function(node, "010 1\n", fp); // last input decides if this
+				oassert(node->num_input_pins == 3);
+				oassert(node->input_pins[2] != NULL);
+				break;
+			case ADDER_FUNC:
+				define_set_input_logical_function(node, "001 1\n010 1\n100 1\n111 1\n", fp);
+				break;
+			case CARRY_FUNC:
+				define_set_input_logical_function(node, "011 1\n101 1\n110 1\n111 1\n", fp);
+				break;
+			case BITWISE_NOT:
+				define_set_input_logical_function(node, "0 1\n", fp);
+				break;
+
+			case LOGICAL_AND:
+			case LOGICAL_OR:
+			case LOGICAL_XOR:
+			case LOGICAL_XNOR:
+			case LOGICAL_NAND:
+			case LOGICAL_NOR:
+			case LOGICAL_EQUAL:
+			case NOT_EQUAL:
+			case LOGICAL_NOT:
+				define_logical_function(node, node->type, fp);
+				break;
+
+			case MUX_2:
+				define_decoded_mux(node, fp);
+				break;
+
+			case FF_NODE:
+				define_ff(node, fp);
+				break;
+
+			case MULTIPLY:
+				if (hard_multipliers == NULL)
+					oassert(FALSE); /* should be soft logic! */
+				define_mult_function(node, node->type, fp);
+
+				break;
+
+			//case FULLADDER:
+			case ADD:
+				if (hard_adders == NULL)
+					oassert(FALSE); /* should be soft logic! */
+				define_add_function(node, node->type, fp);
+				break;
+
+			case MINUS:
+				oassert(hard_adders); /* should be soft logic! */
+				if(hard_adders)
+					define_add_function(node, node->type, fp);
+				break;
+
+			case MEMORY:
+			case HARD_IP:
+				define_hard_block(node, node->type, fp);
+				break;
+			case INPUT_NODE:
+			case OUTPUT_NODE:
+			case PAD_NODE:
+			case CLOCK_NODE:
+			case GND_NODE:
+			case VCC_NODE:
+				/* some nodes already converted */
+				break;
+
+			case BITWISE_AND:
+			case BITWISE_NAND:
+			case BITWISE_NOR:
+			case BITWISE_XNOR:
+			case BITWISE_XOR:
+			case BITWISE_OR:
+			case BUF_NODE:
+			case MULTI_PORT_MUX:
+			case SL:
+			case SR:
+			case CASE_EQUAL:
+			case CASE_NOT_EQUAL:
+			case DIVIDE:
+			case MODULO:
+			case GTE:
+			case LTE:
+			default:
+				/* these nodes should have been converted to softer versions */
+				error_message(NETLIST_ERROR, 0,-1,"Output blif: node should have been converted to softer version.");
+				break;
+		}
 
 		/* mark that we have visitied this node now */
 		node->traverse_visited = traverse_mark_number;
@@ -302,109 +394,7 @@ void depth_traverse_output_blif(nnode_t *node, int traverse_mark_number, FILE *f
 
 	}
 }
-/*-------------------------------------------------------------------
- * (function: partial_map_node)
- * 	Depending on node type, figures out what to print for this node
- *------------------------------------------------------------------*/
-void output_node(nnode_t *node, short /*traverse_number*/, FILE *fp)
-{
-	switch (node->type)
-	{
-		case GT:
-			define_set_input_logical_function(node, "100 1\n", fp);
-			oassert(node->num_input_pins == 3);
-			oassert(node->input_pins[2] != NULL);
-			break;
-		case LT:
-			define_set_input_logical_function(node, "010 1\n", fp); // last input decides if this
-			oassert(node->num_input_pins == 3);
-			oassert(node->input_pins[2] != NULL);
-			break;
-		case ADDER_FUNC:
-			define_set_input_logical_function(node, "001 1\n010 1\n100 1\n111 1\n", fp);
-			break;
-		case CARRY_FUNC:
-			define_set_input_logical_function(node, "011 1\n101 1\n110 1\n111 1\n", fp);
-			break;
-		case BITWISE_NOT:
-			define_set_input_logical_function(node, "0 1\n", fp);
-			break;
 
-		case LOGICAL_AND:
-		case LOGICAL_OR:
-		case LOGICAL_XOR:
-		case LOGICAL_XNOR:
-		case LOGICAL_NAND:
-		case LOGICAL_NOR:
-		case LOGICAL_EQUAL:
-		case NOT_EQUAL:
-		case LOGICAL_NOT:
-			define_logical_function(node, node->type, fp);
-			break;
-
-		case MUX_2:
-			define_decoded_mux(node, fp);
-			break;
-
-		case FF_NODE:
-			define_ff(node, fp);
-			break;
-
-		case MULTIPLY:
-			if (hard_multipliers == NULL)
-				oassert(FALSE); /* should be soft logic! */
-			define_mult_function(node, node->type, fp);
-
-			break;
-
-		//case FULLADDER:
-		case ADD:
-			if (hard_adders == NULL)
-				oassert(FALSE); /* should be soft logic! */
-			define_add_function(node, node->type, fp);
-			break;
-
-		case MINUS:
-			oassert(hard_adders); /* should be soft logic! */
-			if(hard_adders)
-				define_add_function(node, node->type, fp);
-			break;
-
-		case MEMORY:
-		case HARD_IP:
-			define_hard_block(node, node->type, fp);
-			break;
-		case INPUT_NODE:
-		case OUTPUT_NODE:
-		case PAD_NODE:
-		case CLOCK_NODE:
-		case GND_NODE:
-		case VCC_NODE:
-			/* some nodes already converted */
-			break;
-
-		case BITWISE_AND:
-		case BITWISE_NAND:
-		case BITWISE_NOR:
-		case BITWISE_XNOR:
-		case BITWISE_XOR:
-		case BITWISE_OR:
-		case BUF_NODE:
-		case MULTI_PORT_MUX:
-		case SL:
-		case SR:
-		case CASE_EQUAL:
-		case CASE_NOT_EQUAL:
-		case DIVIDE:
-		case MODULO:
-		case GTE:
-		case LTE:
-		default:
-			/* these nodes should have been converted to softer versions */
-			error_message(NETLIST_ERROR, 0,-1,"Output blif: node should have been converted to softer version.");
-			break;
-	}
-}
 
 /*-------------------------------------------------------------------------
  * (function: define_logical_function)
@@ -424,16 +414,14 @@ void define_logical_function(nnode_t *node, short /*type*/, FILE *out)
 		for (i = 0; i < node->num_input_pins; i++)
 		{
 			/* now hookup the input wires with their respective ports.  [1+i] to skip output spot. */
-			if (node->input_pins[i]->net->driver_pin->node->related_ast_node != NULL)
-				fprintf(out, " %s^^%i-%i", node->input_pins[i]->net->driver_pin->node->name, 	node->input_pins[i]->net->driver_pin->node->related_ast_node->far_tag, node->input_pins[i]->net->driver_pin->node->related_ast_node->high_number);
-			else
-				fprintf(out, " %s", node->input_pins[i]->net->driver_pin->node->name);
+			fprintf(out, " %s", 
+				 make_node_conn_name(node->input_pins[i]->net->driver_pin->node).c_str()
+			);
 		}
 		/* now print the output */
-		if (node->related_ast_node != NULL)
-			fprintf(out, " %s^^%i-%i", node->name, node->related_ast_node->far_tag, node->related_ast_node->high_number);
-		else
-			fprintf(out, " %s", node->name);
+		fprintf(out, " %s",  
+			make_node_conn_name(node).c_str()
+		);
 	}
 	else
 	{
@@ -445,20 +433,17 @@ void define_logical_function(nnode_t *node, short /*type*/, FILE *out)
 			nnet_t *net = node->input_pins[i]->net;
 			if (net && net->driver_pin)
 			{
-				if (net->driver_pin->name != NULL)
-				{
-					if ((net->driver_pin->node->type == MULTIPLY) ||
+				if (net->driver_pin->name != NULL
+				&& ((net->driver_pin->node->type == MULTIPLY) ||
 					(net->driver_pin->node->type == HARD_IP) ||
 					(net->driver_pin->node->type == MEMORY) ||
 					(net->driver_pin->node->type == ADD) ||
-					(net->driver_pin->node->type == MINUS) )
-					{
-						fprintf(out, " %s", net->driver_pin->name);
-					}
-					else
-					{
-						fprintf(out, " %s", net->driver_pin->node->name);
-					}
+					(net->driver_pin->node->type == MINUS) 
+					))
+				{
+					fprintf(out, " %s", 
+						net->driver_pin->name
+					);
 				}
 				else
 				{
@@ -599,17 +584,15 @@ void define_set_input_logical_function(nnode_t *node, const char *bit_output, FI
 		for (i = 0; i < node->num_input_pins; i++)
 		{
 			/* now hookup the input wires with their respective ports.  [1+i] to skip output spot. */
-			if (node->input_pins[i]->net->driver_pin->node->related_ast_node != NULL)
-				fprintf(out, " %s^^%i-%i", node->input_pins[i]->net->driver_pin->node->name, node->input_pins[i]->net->driver_pin->node->related_ast_node->far_tag, node->input_pins[i]->net->driver_pin->node->related_ast_node->high_number);
-			else
-				fprintf(out, " %s", node->input_pins[i]->net->driver_pin->node->name);
+			fprintf(out, " %s", 
+				 make_node_conn_name(node->input_pins[i]->net->driver_pin->node).c_str()
+			);
 		}
-
 		/* now print the output */
-		if (node->related_ast_node != NULL)
-			fprintf(out, " %s^^%i-%i", node->name, node->related_ast_node->far_tag, node->related_ast_node->high_number);
-		else
-			fprintf(out, " %s", node->name);
+		fprintf(out, " %s",  
+			make_node_conn_name(node).c_str()
+		);
+
 		fprintf(out, "\n");
 
 		/* print out the blif definition of this gate */
@@ -626,22 +609,16 @@ void define_set_input_logical_function(nnode_t *node, const char *bit_output, FI
 		{
 			if (node->input_pins[i]->net->driver_pin != NULL)
 			{
-				if (node->input_pins[i]->net->driver_pin->name != NULL)
+				/* now hookup the input wires with their respective ports.  [1+i] to skip output spot. */
+				/* Just print the driver_pin->name NOT driver_pin->node->name -- KEN */
+				if (node->input_pins[i]->net->driver_pin->name != NULL 
+				&& ((node->input_pins[i]->net->driver_pin->node->type == MULTIPLY) ||
+					(node->input_pins[i]->net->driver_pin->node->type == HARD_IP) ||
+					(node->input_pins[i]->net->driver_pin->node->type == MEMORY) ||
+					(node->input_pins[i]->net->driver_pin->node->type == ADD) ||
+					(node->input_pins[i]->net->driver_pin->node->type == MINUS)))
 				{
-					/* now hookup the input wires with their respective ports.  [1+i] to skip output spot. */
-					/* Just print the driver_pin->name NOT driver_pin->node->name -- KEN */
-					if ((node->input_pins[i]->net->driver_pin->node->type == MULTIPLY) ||
-			    	 	  (node->input_pins[i]->net->driver_pin->node->type == HARD_IP) ||
-			    	   	(node->input_pins[i]->net->driver_pin->node->type == MEMORY) ||
-			    	   	(node->input_pins[i]->net->driver_pin->node->type == ADD) ||
-			    	   	(node->input_pins[i]->net->driver_pin->node->type == MINUS))
-					{
-						fprintf(out, " %s", node->input_pins[i]->net->driver_pin->name);
-					}
-					else
-					{
-						fprintf(out, " %s", node->input_pins[i]->net->driver_pin->node->name);
-					}
+					fprintf(out, " %s", node->input_pins[i]->net->driver_pin->name);
 				}
 				else
 				{
@@ -679,6 +656,9 @@ void define_ff(nnode_t *node, FILE *out)
 	and by -1 internally in ODIN */
 	int initial_value = 3;
 
+	//todo: support for more edge type here ??
+	std::string edge_type = "re";
+
 	/* Check if the global argument for initial values is set to 0 or 1 instead */
 	if (global_args.sim_initial_value == 0) initial_value = 0;
 	else if (global_args.sim_initial_value == 1) initial_value = 1;
@@ -687,94 +667,46 @@ void define_ff(nnode_t *node, FILE *out)
 	if(node->has_initial_value){
 		initial_value = node->initial_value;
 	}
+	
+	std::string driver;
+	std::string output = make_node_conn_name(node);
+	std::string clk_pin;
 
-	/* input, output, clock */
-	if (global_args.high_level_block != NULL)
+	if (global_args.high_level_block == NULL
+	&& node->input_pins[0]->net->driver_pin->name != NULL)
+		driver = node->input_pins[0]->net->driver_pin->name;
+	else
+		driver = make_node_conn_name(node->input_pins[0]->net->driver_pin->node);
+
+	if (global_args.high_level_block == NULL
+	&& node->input_pins[1]->net->driver_pin->name != NULL)
+		clk_pin = node->input_pins[1]->net->driver_pin->name;
+	else
+		clk_pin = make_node_conn_name(node->input_pins[1]->net->driver_pin->node);
+
+
+	if(global_args.black_box_latches)
 	{
-		if(global_args.black_box_latches)
-		{
-			haveOutputLatchBlackbox = TRUE;
+		std::stringstream bb_name;
+		bb_name << "latch" << "|" << edge_type << "|" << clk_pin.c_str() << "|" << std::dec << initial_value;
 
-			fprintf(out, ".subckt bb_latch i[0]=%s^^%i-%i o[0]=%s^^%i-%i bbl_type_re bbl_control_%s^^%i-%i bbl_init_val_%d",
-							node->input_pins[0]->net->driver_pin->node->name,
-							node->input_pins[0]->net->driver_pin->node->related_ast_node->far_tag,
-							node->input_pins[0]->net->driver_pin->node->related_ast_node->high_number,
-							node->name, node->related_ast_node->far_tag,
-							node->related_ast_node->high_number,
-							node->input_pins[1]->net->driver_pin->node->name,
-							node->input_pins[1]->net->driver_pin->node->related_ast_node->far_tag,
-							node->input_pins[1]->net->driver_pin->node->related_ast_node->high_number,
-							initial_value);
-		}
-		else
-		{
-			fprintf(out, ".latch %s^^%i-%i %s^^%i-%i re %s^^%i-%i %d",
-							node->input_pins[0]->net->driver_pin->node->name,
-							node->input_pins[0]->net->driver_pin->node->related_ast_node->far_tag,
-							node->input_pins[0]->net->driver_pin->node->related_ast_node->high_number,
-							node->name, node->related_ast_node->far_tag,
-							node->related_ast_node->high_number,
-							node->input_pins[1]->net->driver_pin->node->name,
-							node->input_pins[1]->net->driver_pin->node->related_ast_node->far_tag,
-							node->input_pins[1]->net->driver_pin->node->related_ast_node->high_number,
-							initial_value);
-		}
+		//add to list if it did not exist before
+		if(std::find(bb_latches.begin(), bb_latches.end(), bb_name.str().c_str()) == bb_latches.end())
+			bb_latches.push_back(bb_name.str());
+
+		fprintf(out, ".subckt %s i[0]=%s o[0]=%s",
+						bb_name.str().c_str(),
+						driver.c_str(),
+						output.c_str());
 	}
 	else
 	{
-		if (node->input_pins[0]->net->driver_pin->name == NULL)
-		{
-			if(global_args.black_box_latches)
-			{
-				haveOutputLatchBlackbox = TRUE;
-
-				fprintf(out, ".subckt bb_latch i[0]=%s o[0]=%s bbl_type_re ", node->input_pins[0]->net->driver_pin->node->name, node->name);
-			}
-			else
-			{
-				fprintf(out, ".latch %s %s re ", node->input_pins[0]->net->driver_pin->node->name, node->name);
-			}
-		}
-		else
-		{
-			if(global_args.black_box_latches)
-			{
-				haveOutputLatchBlackbox = TRUE;
-
-				fprintf(out, ".subckt bb_latch i[0]=%s o[0]=%s bbl_type_re ", node->input_pins[0]->net->driver_pin->name, node->name);
-			}
-			else
-			{
-				fprintf(out, ".latch %s %s re ", node->input_pins[0]->net->driver_pin->name, node->name);
-			}
-		}
-
-		if (node->input_pins[1]->net->driver_pin->name == NULL)
-		{
-			if(global_args.black_box_latches)
-			{
-				haveOutputLatchBlackbox = TRUE;
-
-				fprintf(out, "bbl_control_%s bbl_init_val_%d\n", node->input_pins[1]->net->driver_pin->node->name, initial_value);
-			}
-			else
-			{
-				fprintf(out, "%s %d\n", node->input_pins[1]->net->driver_pin->node->name, initial_value);
-			}
-		}
-		else
-		{
-			if(global_args.black_box_latches)
-			{
-				haveOutputLatchBlackbox = TRUE;
-
-				fprintf(out, "bbl_control_%s bbl_init_val_%d\n", node->input_pins[1]->net->driver_pin->name, initial_value);
-			}
-			else
-			{
-				fprintf(out, "%s %d\n", node->input_pins[1]->net->driver_pin->name, initial_value);
-			}
-		}
+		fprintf(out, ".latch %s %s %s %s %d",
+						driver.c_str(),
+						output.c_str(),
+						edge_type.c_str(),
+						clk_pin.c_str(),
+						initial_value);
 	}
 	fprintf(out, "\n");
 }
@@ -796,20 +728,14 @@ void define_decoded_mux(nnode_t *node, FILE *out)
 		for (i = 0; i < node->num_input_pins; i++)
 		{
 			/* now hookup the input wires with their respective ports.  [1+i] to skip output spot. */
-			if (node->input_pins[i]->net->driver_pin->node->related_ast_node != NULL)
-			{
-				fprintf(out, " %s^^%i-%i", node->input_pins[i]->net->driver_pin->node->name, node->input_pins[i]->net->driver_pin->node->related_ast_node->far_tag, node->input_pins[i]->net->driver_pin->node->related_ast_node->high_number);
-			}
-			else
-			{
-				fprintf(out, " %s", node->input_pins[i]->net->driver_pin->node->name);
-			}
+			fprintf(out, " %s", 
+				 make_node_conn_name(node->input_pins[i]->net->driver_pin->node).c_str()
+			);
 		}
 		/* now print the output */
-		if (node->related_ast_node != NULL)
-			fprintf(out, " %s^^%i-%i", node->name, node->related_ast_node->far_tag, node->related_ast_node->high_number);
-		else
-			fprintf(out, " %s", node->name);
+		fprintf(out, " %s",  
+			make_node_conn_name(node).c_str()
+		);
 	}
 	else
 	{
@@ -830,20 +756,14 @@ void define_decoded_mux(nnode_t *node, FILE *out)
 			}
 			else
 			{
-				if (net->driver_pin->name != NULL)
+				if (net->driver_pin->name != NULL
+				&& ((net->driver_pin->node->type == MULTIPLY) ||
+					(net->driver_pin->node->type == HARD_IP) ||
+					(net->driver_pin->node->type == MEMORY) ||
+					(net->driver_pin->node->type == ADD) ||
+					(net->driver_pin->node->type == MINUS)))
 				{
-					if ((net->driver_pin->node->type == MULTIPLY) ||
-				    	(net->driver_pin->node->type == HARD_IP) ||
-				    	(net->driver_pin->node->type == MEMORY) ||
-				    	(net->driver_pin->node->type == ADD) ||
-				    	(net->driver_pin->node->type == MINUS))
-					{
-						fprintf(out, " %s", net->driver_pin->name);
-					}
-					else
-					{
-						fprintf(out, " %s", net->driver_pin->node->name);
-					}
+					fprintf(out, " %s", net->driver_pin->name);
 				}
 				else
 				{
@@ -884,22 +804,11 @@ void define_decoded_mux(nnode_t *node, FILE *out)
  *------------------------------------------------------------------------*/
 void add_the_blackbox_for_latches(FILE *out)
 {
-	fprintf(out, ".model bb_latch\n");
-
-	/* add the inputs */
-	fprintf(out, ".inputs");
-	fprintf(out, " i[0]");
-	fprintf(out, "\n");
-
-	/* add the outputs */
-	fprintf(out, ".outputs");
-	fprintf(out, " o[0]");
-	fprintf(out, "\n");
-
-	fprintf(out, ".blackbox\n");
-	fprintf(out, ".end\n");
-	fprintf(out, "\n");
-
+	if(global_args.black_box_latches)
+	{
+		for(int i=0; i < bb_latches.size(); i++)
+			fprintf(out, ".model %s\n.inputs i[0]\n.outputs o[0]\n.blackbox\n.end\n\n",bb_latches[i].c_str());
+	}
 
 	return;
 }
