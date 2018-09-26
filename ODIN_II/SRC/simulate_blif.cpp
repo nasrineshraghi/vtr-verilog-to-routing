@@ -110,7 +110,7 @@ static char *generate_vector_header(lines_t *l);
 static void write_vector_headers(FILE *file, lines_t *l);
 
 static void write_vector_to_file(lines_t *l, FILE *file, int cycle);
-static void write_wave_to_file(lines_t *l, FILE* file, int cycle_offset, int wave_length, int both_edges);
+static void write_wave_to_file(lines_t *l,lines_t *clks, FILE* file, int cycle_offset, int wave_length, int both_edges);
 
 static void write_vector_to_modelsim_file(lines_t *l, FILE *modelsim_out, int cycle);
 static void write_wave_to_modelsim_file(netlist_t *netlist, lines_t *l, FILE* modelsim_out, int cycle_offset, int wave_length);
@@ -200,6 +200,10 @@ sim_data_t *init_simulation(netlist_t *netlist)
 	sim_data->input_lines = create_lines(netlist, INPUT);
 	if (!verify_lines(sim_data->input_lines))
 		error_message(SIMULATION_ERROR, 0, -1, "Input lines could not be assigned.");
+
+	sim_data->clock_lines = create_lines(netlist, CLOCK_NODE);
+	if (!verify_lines(sim_data->clock_lines))
+		error_message(SIMULATION_ERROR, 0, -1, "Clock lines could not be assigned.");
 
 	sim_data->output_lines = create_lines(netlist, OUTPUT);
 	if (!verify_lines(sim_data->output_lines))
@@ -303,6 +307,7 @@ sim_data_t *init_simulation(netlist_t *netlist)
 	// Create temporary input lines and verify.
 	// also init the inout file and the model sim
 	lines_t * input_lines = create_lines(sim_data->netlist, INPUT);
+	lines_t * clock_lines = create_lines(sim_data->netlist, CLOCK_NODE);
 	if (!verify_lines(input_lines))
 		error_message(SIMULATION_ERROR, 0, -1, "Input lines could not be assigned.");
 
@@ -318,8 +323,8 @@ sim_data_t *init_simulation(netlist_t *netlist)
 		int cycle;
 		for (cycle = cycle_offset; cycle < cycle_offset + wave_length; cycle++)
 		{
-			if (is_even_cycle(cycle))
-			{
+			// if (is_even_cycle(cycle))
+			// {
 				if (sim_data->in)
 				{
 					char buffer[BUFFER_MAX_SIZE];
@@ -333,15 +338,15 @@ sim_data_t *init_simulation(netlist_t *netlist)
 				{
 					v = generate_random_test_vector(cycle, sim_data);
 				}
-			}
+			// }
 
 			add_test_vector_to_lines(v, input_lines, cycle);
 
-			if (!is_even_cycle(cycle))
+			// if (!is_even_cycle(cycle))
 				free_test_vector(v);
 		}
 			// Record the input vectors we are using.
-		write_wave_to_file(input_lines, sim_data->in_out, cycle_offset, wave_length, 1);
+		write_wave_to_file(input_lines, clock_lines, sim_data->in_out, cycle_offset, wave_length, -1);
 		// Write ModelSim script.
 		write_wave_to_modelsim_file(sim_data->netlist, input_lines, sim_data->modelsim_out, cycle_offset, wave_length);
 	}
@@ -391,19 +396,19 @@ int single_step(sim_data_t *sim_data, int wave)
 	int cycle;
 	for (cycle = cycle_offset; cycle < cycle_offset + wave_length; cycle++)
 	{
-		if (is_even_cycle(cycle))
-		{
+		// if (is_even_cycle(cycle))
+		// {
 			char buffer[BUFFER_MAX_SIZE];
 
 			if (!get_next_vector(sim_data->in_out, buffer))
 				error_message(SIMULATION_ERROR, 0, -1, "Could not read next vector.");
 
 			v = parse_test_vector(buffer);
-		}
+		// }
 
 		add_test_vector_to_lines(v, sim_data->input_lines, cycle);
 
-		if (!is_even_cycle(cycle))
+		// if (!is_even_cycle(cycle))
 			free_test_vector(v);
 
 		if (cycle)
@@ -425,7 +430,7 @@ int single_step(sim_data_t *sim_data, int wave)
 	sim_data->simulation_time += wall_time() - simulation_start_time;
 
 	// Write the result of this wave to the output vector file.
-	write_wave_to_file(sim_data->output_lines, sim_data->out, cycle_offset, wave_length, -1);
+	write_wave_to_file(sim_data->output_lines, NULL, sim_data->out, cycle_offset, wave_length, -1);
 
 	sim_data->total_time += wall_time() - wave_start_time;
 
@@ -2582,8 +2587,17 @@ static lines_t *create_lines(netlist_t *netlist, int type)
 	{
 		nnode_t *node = nodes[i];
 		char *port_name = get_port_name(node->name);
-
-		if (type == OUTPUT || !is_clock_node(node))
+		if (type == OUTPUT || (type == INPUT && !is_clock_node(node)))
+		{
+			if (find_portname_in_lines(port_name, l) == -1)
+			{
+				line_t *line = create_line(port_name);
+				l->lines = (line_t **)vtr::realloc(l->lines, sizeof(line_t *)*(l->count + 1));
+				l->lines[l->count++] = line;
+			}
+			assign_node_to_line(node, l, type, 0);
+		}
+		else if (type == CLOCK_NODE && is_clock_node(node))
 		{
 			if (find_portname_in_lines(port_name, l) == -1)
 			{
@@ -2911,6 +2925,29 @@ static test_vector *generate_random_test_vector(int cycle, sim_data_t *sim_data)
 	v->count = 0;
 
 	int i;
+	for (i = 0; i < sim_data->clock_lines->count; i++)
+	{
+		v->values = (signed char **)vtr::realloc(v->values, sizeof(signed char *) * (v->count + 1));
+		v->counts = (int *)vtr::realloc(v->counts, sizeof(int) * (v->count + 1));
+		v->values[v->count] = 0;
+		v->counts[v->count] = 0;
+		for (int j = 0; j < sim_data->clock_lines->lines[i]->number_of_pins; j++)
+		{
+			v->values[v->count] = (signed char *)vtr::realloc(v->values[v->count], sizeof(signed char) * (v->counts[v->count] + 1));
+			if(v->count == 0) //set initial clock
+				v->values[v->count][v->counts[v->count]] = 0;
+			
+			else if((cycle%i)==0) //default each clock is half of the previous;
+				v->values[v->count][v->counts[v->count]] = !(v->values[v->count][v->counts[v->count]-1]);
+
+			else
+				v->values[v->count][v->counts[v->count]] = (v->values[v->count][v->counts[v->count]-1]);
+
+			v->counts[v->count]++;
+		}
+		v->count++;
+	}
+
 	for (i = 0; i < sim_data->input_lines->count; i++)
 	{
 		v->values = (signed char **)vtr::realloc(v->values, sizeof(signed char *) * (v->count + 1));
@@ -2918,8 +2955,7 @@ static test_vector *generate_random_test_vector(int cycle, sim_data_t *sim_data)
 		v->values[v->count] = 0;
 		v->counts[v->count] = 0;
 
-		int j;
-		for (j = 0; j < sim_data->input_lines->lines[i]->number_of_pins; j++)
+		for (int j = 0; j < sim_data->input_lines->lines[i]->number_of_pins; j++)
 		{
 			std::string name = sim_data->input_lines->lines[i]->name;
 			
@@ -2960,7 +2996,7 @@ static test_vector *generate_random_test_vector(int cycle, sim_data_t *sim_data)
  * When edge is -1, both edges of the clock are written. When edge is 0,
  * the falling edge is written. When edge is 1, the rising edge is written.
  */
-static void write_wave_to_file(lines_t *l, FILE* file, int cycle_offset, int wave_length, int edge)
+static void write_wave_to_file(lines_t *l, lines_t *clks, FILE* file, int cycle_offset, int wave_length, int edge)
 {
 	if (!cycle_offset)
 		write_vector_headers(file, l);
@@ -2968,8 +3004,11 @@ static void write_wave_to_file(lines_t *l, FILE* file, int cycle_offset, int wav
 	int cycle;
 	for (cycle = cycle_offset; cycle < (cycle_offset + wave_length); cycle++)
 	{
-		if (edge == -1 || (edge ==  0 &&  is_even_cycle(cycle)) || (edge ==  1 && !is_even_cycle(cycle)))
+		// if (edge == -1 || (edge ==  0 &&  is_even_cycle(cycle)) || (edge ==  1 && !is_even_cycle(cycle)))
 			write_vector_to_file(l, file, cycle);
+			if(clks)
+				write_vector_to_file(clks, file, cycle);
+			fprintf(file, "\n");
 	}
 }
 
@@ -3042,7 +3081,6 @@ static void write_vector_to_file(lines_t *l, FILE *file, int cycle)
 
 		fprintf(file,"%s",buffer.str().c_str());
 	}
-	fprintf(file, "\n");
 }
 
 /*
@@ -3071,7 +3109,7 @@ static void write_wave_to_modelsim_file(netlist_t *netlist, lines_t *l, FILE* mo
 	int cycle;
 	for (cycle = cycle_offset; cycle < (cycle_offset + wave_length); cycle ++)
 	{
-		if (!is_even_cycle(cycle))
+		// if (!is_even_cycle(cycle))
 			write_vector_to_modelsim_file(l, modelsim_out, cycle);
 	}
 }

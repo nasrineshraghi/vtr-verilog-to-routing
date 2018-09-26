@@ -102,6 +102,7 @@ typedef struct {
 typedef struct sim_data_t_t
 {
 	// Create and verify the lines.
+	lines_t *clock_lines;
 	lines_t *input_lines;
 	lines_t *output_lines;
 	FILE *out;
