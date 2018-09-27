@@ -36,6 +36,9 @@
 
 #define CONGESTED_SLOPE_VAL -0.04
 
+//Print out extensive debug information about router operations
+//#define ROUTER_DEBUG
+
 constexpr float CONGESTED_ITERATION_THRESHOLD_FACTOR = 0.8;
 
 enum class RouterCongestionMode {
