@@ -179,6 +179,18 @@ void simulate_netlist(netlist_t *netlist)
 	calculate_activity ( netlist, sim_data->num_vectors, sim_data->act_out );
 }
 
+/****************************
+ * This uses a list of clocks and speed passed via command line (clk1,ratio1 clk2,ratio2 ...)
+ * and normalize them to the slowest clock such that all ratio are a proportion of it
+ * we find the the gcd of all double and set the slowest clock to it 
+ * then we normalize according to it. 
+ * this is done since the clock ratio can only be an integer
+ */
+static bool process_inputed_clock_ratios()
+{
+	return false;
+}
+
 /**
  * Initialize simulation
  */
@@ -194,6 +206,9 @@ sim_data_t *init_simulation(netlist_t *netlist)
 	sim_data->netlist = netlist;
 	printf("Beginning simulation. Output_files located @: %s\n", ((char *)global_args.sim_directory)); 
 	fflush(stdout);
+
+	// Process the user defined clock ratios passed via command line
+	process_inputed_clock_ratios();
 
 	// Create and verify the lines.
 	sim_data->input_lines = create_lines(netlist, INPUT, false);
@@ -2846,6 +2861,8 @@ static test_vector *generate_random_test_vector(int cycle, sim_data_t *sim_data)
 	v->counts = 0;
 	v->count = 0;
 
+	std::vector<std::string> held_high = global_args.sim_hold_high;
+	std::vector<std::string> held_low = global_args.sim_hold_low;
 
 	for (int i = 0; i < sim_data->input_lines->count; i++)
 	{
@@ -2856,32 +2873,39 @@ static test_vector *generate_random_test_vector(int cycle, sim_data_t *sim_data)
 
 		for (int j = 0; j < sim_data->input_lines->lines[i]->number_of_pins; j++)
 		{
-			std::string name = sim_data->input_lines->lines[i]->name;
 			signed char value = -1;
 
-			// use input override to set the pin value
-			if(name.size())
+			/********************************************************
+			 * use input override to set the pin value to hold high if requested
+			 */
+			std::string name = sim_data->input_lines->lines[i]->name;
+			if(value < 0
+			&& name.size()
+			&& held_high.empty()
+			&& std::find(held_high.begin(), held_high.end(), name) != held_high.end())
 			{
-				std::vector<std::string> held_high = global_args.sim_hold_high;
-				std::vector<std::string> held_low = global_args.sim_hold_low;
-				if (std::find(held_high.begin(), held_high.end(), name) != held_high.end())
-				{
-					if (!cycle) value =	0;	// start with reverse value
-					else        value =	1;	// then hold to requested value				
-				}
-				else if (std::find(held_low.begin(), held_low.end(), name) != held_low.end())
-				{
-					if (!cycle) value = 1;	// start with reverse value
-					else        value = 0;	// then hold to requested value
-				}
+				if (!cycle) value =	0;	// start with reverse value
+				else        value =	1;	// then hold to requested value				
 			}
 
-			//if no override was set then we set it via other parameters
-			if(value < 0)
+			/********************************************************
+			 * use input override to set the pin value to hold low if requested
+			 */
+			if(value < 0
+			&& name.size()
+			&& held_low.empty()
+			&& std::find(held_low.begin(), held_low.end(), name) != held_low.end())
 			{
-				// if it is a clock node, use it's ratio to generate a cycle
+				if (!cycle) value = 1;	// start with reverse value
+				else        value = 0;	// then hold to requested value
+			}
+			/********************************************************
+			 * if it is a clock node, use it's ratio to generate a cycle
+			 */
+			if(value < 0
+			&& (sim_data->input_lines->lines[i]->number_of_pins > 0))
+			{
 				npin_t *related_pin = sim_data->input_lines->lines[i]->pins[0];
-
 				signed char clock_ratio = get_clock_ratio(related_pin->node);
 				if(clock_ratio)
 				{
@@ -2893,15 +2917,21 @@ static test_vector *generate_random_test_vector(int cycle, sim_data_t *sim_data)
 					else
 						value = previous_cycle_clock_value;
 				}
-				// Passed via the -3 option
-				else if (global_args.sim_generate_three_valued_logic)
-					value = (rand() % 3) - 1;
-
-				else
-					value = (rand() % 2);	//default random value;
-
 			}
 
+			/********************************************************
+			 * set the value via the -3 option
+			 */
+			if(value < 0
+			&& global_args.sim_generate_three_valued_logic)
+				value = (rand() % 3) - 1;
+
+			/********************************************************
+			 * default fallback value is a random 1 or 0
+			 */
+			if(value < 0)
+				value = (rand() % 2);
+			
 			v->values[v->count] = (signed char *)vtr::realloc(v->values[v->count], sizeof(signed char) * (v->counts[v->count] + 1));
 			v->values[v->count][v->counts[v->count]++] = value;
 		}
