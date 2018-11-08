@@ -1,0 +1,19 @@
+.model simple_circuit
+.inputs top^A top^B top^clk
+.outputs top^Out
+
+.names gnd
+.names unconn
+.names vcc
+1
+
+.names top^A top^B top^BITWISE_AND~0^LOGICAL_AND~1
+11 1
+
+.latch top^BITWISE_AND~0^LOGICAL_AND~1 top^Out_FF_NODE re top^clk 3
+
+.names top^Out_FF_NODE top^Out
+1 1
+
+.end
+

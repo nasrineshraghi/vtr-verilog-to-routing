@@ -1,0 +1,12 @@
+# Benchmark "simple_circuit" written by ABC on Wed Sep 19 09:05:31 2018
+.model simple_circuit
+.inputs top^A top^B top^clk
+.outputs top^Out
+
+.latch n10 top^Out_FF_NODE re top^clk 0
+
+.names top^A top^B n10
+11 1
+.names top^Out_FF_NODE top^Out
+1 1
+.end

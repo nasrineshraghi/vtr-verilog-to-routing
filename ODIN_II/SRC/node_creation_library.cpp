@@ -282,6 +282,7 @@ const char *CARRY_FUNC_string = "CARRY_FUNC";
 const char *MUX_2_string = "MUX_2";
 const char *HARD_IP_string = "HARD_IP";
 const char *MEMORY_string = "MEMORY";
+//const char *PLUSCOLON_string = "PLUSCOLON";
 
 /*---------------------------------------------------------------------------------------------
  * (function: node_name_based_on_op)
@@ -418,6 +419,9 @@ const char *node_name_based_on_op(nnode_t *node)
 			break;
 		case HARD_IP:
 			return_string = HARD_IP_string;
+			break;
+                      case PLUSCOLON:
+			return_string = PLUSCOLON_string;
 			break;
 		default:
 			return_string = NULL;

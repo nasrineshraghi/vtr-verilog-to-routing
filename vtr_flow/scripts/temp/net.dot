@@ -1,0 +1,16 @@
+digraph G {
+	ranksep=.25;
+	"top_A" [shape=triangle];
+	"top_A" -> "top_BITWISE_AND~0"[label="top^A"];
+	"top_BITWISE_AND~0"
+	"top_BITWISE_AND~0" -> "top_Out_FF_NODE"[label="top^Out"];
+	"top_Out_FF_NODE" [shape=box];
+	"top_Out_FF_NODE" -> "top_Out_O";
+	"top_Out_O" [shape=triangle];
+	"top_B" [shape=triangle];
+	"top_B" -> "top_BITWISE_AND~0"[label="top^B"];
+	"top_clk" [shape=triangle];
+	"top_clk" -> "top_Out_FF_NODE";
+	"top_ZERO_GND_ZERO"
+	"top_ONE_VCC_CNS"
+}

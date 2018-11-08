@@ -1,0 +1,62 @@
+#Timing report of worst 2 path(s)
+# Unit scale: 1e-09 seconds
+# Output precision: 3
+
+#Path 1
+Startpoint: top^Out_FF_NODE.Q[0] (.latch clocked by top^clk)
+Endpoint  : out:top^Out.outpad[0] (.output clocked by top^clk)
+Path Type : setup
+
+Point                                                             Incr      Path
+--------------------------------------------------------------------------------
+clock top^clk (rise edge)                                        0.000     0.000
+clock source latency                                             0.000     0.000
+top^clk.inpad[0] (.input)                                        0.000     0.000
+top^Out_FF_NODE.clk[0] (.latch)                                  0.042     0.042
+top^Out_FF_NODE.Q[0] (.latch) [clock-to-output]                  0.124     0.166
+out:top^Out.outpad[0] (.output)                                  0.591     0.758
+data arrival time                                                          0.758
+
+clock top^clk (rise edge)                                        0.000     0.000
+clock source latency                                             0.000     0.000
+clock uncertainty                                                0.000     0.000
+output external delay                                            0.000     0.000
+data required time                                                         0.000
+--------------------------------------------------------------------------------
+data required time                                                         0.000
+data arrival time                                                         -0.758
+--------------------------------------------------------------------------------
+slack (VIOLATED)                                                          -0.758
+
+
+#Path 2
+Startpoint: top^A.inpad[0] (.input clocked by top^clk)
+Endpoint  : top^Out_FF_NODE.D[0] (.latch clocked by top^clk)
+Path Type : setup
+
+Point                                                             Incr      Path
+--------------------------------------------------------------------------------
+clock top^clk (rise edge)                                        0.000     0.000
+clock source latency                                             0.000     0.000
+input external delay                                             0.000     0.000
+top^A.inpad[0] (.input)                                          0.000     0.000
+n10.in[0] (.names)                                               0.286     0.286
+n10.out[0] (.names)                                              0.235     0.521
+top^Out_FF_NODE.D[0] (.latch)                                    0.000     0.521
+data arrival time                                                          0.521
+
+clock top^clk (rise edge)                                        0.000     0.000
+clock source latency                                             0.000     0.000
+top^clk.inpad[0] (.input)                                        0.000     0.000
+top^Out_FF_NODE.clk[0] (.latch)                                  0.042     0.042
+clock uncertainty                                                0.000     0.042
+cell setup time                                                 -0.066    -0.024
+data required time                                                        -0.024
+--------------------------------------------------------------------------------
+data required time                                                        -0.024
+data arrival time                                                         -0.521
+--------------------------------------------------------------------------------
+slack (VIOLATED)                                                          -0.545
+
+
+#End of timing report

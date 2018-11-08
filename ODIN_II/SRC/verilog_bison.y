@@ -1,7 +1,6 @@
 %{
 /*
 Copyright (c) 2009 Peter Andrew Jamieson (jamieson.peter@gmail.com)
-
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
 files (the "Software"), to deal in the Software without
@@ -10,10 +9,8 @@ copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the
 Software is furnished to do so, subject to the following
 conditions:
-
 The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -28,27 +25,21 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include "types.h"
 #include "parse_making_ast.h"
-
 #define PARSE {printf("here\n");}
 extern int yylineno;
 #ifndef YYLINENO
 	#define YYLINENO yylineno
 #endif
-
 void yyerror(const char *str){	fprintf(stderr,"error in parsing: %s - on line number %d\n",str, yylineno);	exit(-1);}
 int yywrap(){	return 1;}
 int yyparse();
 int yylex(void);
-
-
 %}
-
 %union{
 	char *id_name;
 	char *num_value;
 	ast_node_t *node;
 }
-
 %token <id_name> vSYMBOL_ID
 %token <num_value> vINTEGRAL
 %token <num_value> vUNSIGNED_DECIMAL
@@ -65,9 +56,9 @@ int yylex(void);
 %token vOUTPUT vPARAMETER vPOSEDGE vREG vWIRE vXNOR vXOR vDEFPARAM voANDAND
 %token voOROR voLTE voGTE voPAL voSLEFT voSRIGHT voEQUAL voNOTEQUAL voCASEEQUAL
 %token voCASENOTEQUAL voXNOR voNAND voNOR vWHILE vINTEGER
-%token vNOT_SUPPORT
+%token vNOT_SUPPORT 
+%token voPlusColon
 %token '?' ':' '|' '^' '&' '<' '>' '+' '-' '*' '/' '%' '(' ')' '{' '}' '[' ']'
-
 %right '?' ':'
 %left voOROR
 %left voANDAND
@@ -92,11 +83,8 @@ int yylex(void);
 %left ULNOT
 %left UADD
 %left UMINUS
-
 %nonassoc LOWER_THAN_ELSE
 %nonassoc vELSE
-
-
 %type <node> source_text items define module list_of_module_items list_of_function_items module_item function_item
 %type <node> variable_define_list
 %type <node> parameter_declaration input_declaration output_declaration defparam_declaration function_declaration
@@ -115,21 +103,17 @@ int yylex(void);
 %type <node> expression primary probable_expression_list expression_list module_parameter
 %type <node> list_of_module_parameters specify_block list_of_specify_statement specify_statement
 %type <node> initial_block parallel_connection list_of_blocking_assignment
-
 %%
-
 // 1 Source Text
 source_text:
 	items										{next_parsed_verilog_file($1);}
 	;
-
 items:
 	items module								{($1 != NULL)? $$ = newList_entry($1, $2): $$ = newList(FILE_ITEMS, $2);}
 	| items define								{$$ = $1;}
 	| module									{$$ = newList(FILE_ITEMS, $1);}
 	| define									{$$ = NULL;}
 	;
-
 define:
 	vDEFINE vSYMBOL_ID vINTEGRAL				             {$$ = NULL; newConstant($2, newNumberNode($3, LONG_LONG, UNSIGNED, yylineno), yylineno);}
   | vDEFINE vSYMBOL_ID vUNSIGNED_DECIMAL				   {$$ = NULL; newConstant($2, newNumberNode($3, DEC, UNSIGNED, yylineno), yylineno);}
@@ -141,25 +125,20 @@ define:
   | vDEFINE vSYMBOL_ID vSIGNED_HEXADECIMAL			 {$$ = NULL; newConstant($2, newNumberNode($3, HEX, SIGNED, yylineno), yylineno);}
   | vDEFINE vSYMBOL_ID vSIGNED_BINARY				     {$$ = NULL; newConstant($2, newNumberNode($3, BIN, SIGNED, yylineno), yylineno);}
 	;
-
-
 module:
 	vMODULE vSYMBOL_ID '(' variable_define_list ')' ';' list_of_module_items vENDMODULE				{$$ = newModule($2, $4, $7, yylineno);}
 	| vMODULE vSYMBOL_ID '(' variable_define_list ',' ')' ';' list_of_module_items vENDMODULE		{$$ = newModule($2, $4, $8, yylineno);} //TODO this is supported?? not in standards
 	| vMODULE vSYMBOL_ID '(' ')' ';' list_of_module_items vENDMODULE								{$$ = newModule($2, NULL, $6, yylineno);}
 	;
-
 //TODO expand this to support INPUT OUTPUT INOUT
 variable_define_list:
 	variable_define_list ',' vSYMBOL_ID													{$$ = newList_entry($1, newVarDeclare($3, NULL, NULL, NULL, NULL, NULL, yylineno));}
 	| vSYMBOL_ID																		{$$ = newList(VAR_DECLARE_LIST, newVarDeclare($1, NULL, NULL, NULL, NULL, NULL, yylineno));}
 	;
-
 list_of_module_items:
 	list_of_module_items module_item			{$$ = newList_entry($1, $2);}
 	| module_item								{$$ = newList(MODULE_ITEMS, $1);}
 	;
-
 module_item:
 	parameter_declaration						{$$ = $1;}
 	| input_declaration							{$$ = $1;}
@@ -176,24 +155,19 @@ module_item:
 	| defparam_declaration						{$$ = $1;}
 	| specify_block                             {$$ = $1;}
 	;
-
 function_declaration:
     vFUNCTION function_output_variable ';' list_of_function_items vENDFUNCTION		{$$ = newFunction($2, $4, yylineno); }
 	;
-
 initial_block:
     vINITIAL statement                                          		{$$ = newInitial($2, yylineno); }
 	;
-
 specify_block:
     vSPECIFY list_of_specify_statement vENDSPECIFY            			{$$ = $2;}
 	;
-
 list_of_function_items:
 	list_of_function_items function_item 								{$$ = newList_entry($1, $2);}
 	| function_item              										{$$ = newList(FUNCTION_ITEMS, $1);}
 	;
-
 function_item: parameter_declaration	        						{$$ = $1;}
 	| function_input_declaration			    						{$$ = $1;}
 	| net_declaration													{$$ = $1;}
@@ -202,60 +176,47 @@ function_item: parameter_declaration	        						{$$ = $1;}
 	| defparam_declaration										   		{$$ = $1;}
 	| function_statement                        						{$$ = $1;} //TODO	It`s temporary
 	;
-
 function_input_declaration:
 	vINPUT variable_list ';'	 				{$$ = markAndProcessSymbolListWith(FUNCTION, INPUT, $2);}
 	;
-
 parameter_declaration:
 	vPARAMETER variable_list ';'				{$$ = markAndProcessSymbolListWith(MODULE,PARAMETER, $2);}
 	;
-
 defparam_declaration:
 	vDEFPARAM variable_list ';'             	{$$ = newDefparam(MODULE_PARAMETER_LIST, $2, yylineno);}
 	;
-
 input_declaration:
 	vINPUT variable_list ';'			    	{$$ = markAndProcessSymbolListWith(MODULE,INPUT, $2);}
 	;
-
 output_declaration:
 	vOUTPUT variable_list ';'					{$$ = markAndProcessSymbolListWith(MODULE,OUTPUT, $2);}
 	;
-
 inout_declaration:
 	vINOUT variable_list ';'					{$$ = markAndProcessSymbolListWith(MODULE,INOUT, $2);}
 	;
-
 net_declaration:
 	vWIRE variable_list ';'						{$$ = markAndProcessSymbolListWith(MODULE, WIRE, $2);}
 	| vREG variable_list ';'			        {$$ = markAndProcessSymbolListWith(MODULE, REG, $2);}
 	;
-
 integer_declaration:
 	vINTEGER integer_type_variable_list ';' 	{$$ = markAndProcessSymbolListWith(MODULE,INTEGER, $2);}
 	;
-
 function_output_variable:
 	function_id_and_output_variable         	{$$ = newList(VAR_DECLARE_LIST, $1);}
 	;
-
 function_id_and_output_variable :
 	vSYMBOL_ID      									{$$ = newVarDeclare($1, NULL, NULL, NULL, NULL, NULL, yylineno);}
     | '[' expression ':' expression ']' vSYMBOL_ID		{$$ = newVarDeclare($6, $2, $4, NULL, NULL, NULL, yylineno);}
 	;
-
 variable_list:
 	variable_list ',' variable						{$$ = newList_entry($1, $3);}
 	| variable_list '.' variable					{$$ = newList_entry($1, $3);}    //Only for parameter
 	| variable										{$$ = newList(VAR_DECLARE_LIST, $1);}
 	;
-
 integer_type_variable_list:
 	integer_type_variable_list ',' integer_type_variable	{$$ = newList_entry($1, $3);}
 	| integer_type_variable									{$$ = newList(VAR_DECLARE_LIST, $1);}
 	;
-
 variable:
 	vSYMBOL_ID																			{$$ = newVarDeclare($1, NULL, NULL, NULL, NULL, NULL, yylineno);}
 	| '[' expression ':' expression ']' vSYMBOL_ID										{$$ = newVarDeclare($6, $2, $4, NULL, NULL, NULL, yylineno);}
@@ -265,7 +226,6 @@ variable:
 	| '[' expression ':' expression ']' vSYMBOL_ID '=' expression						{$$ = newVarDeclare($6, $2, $4, NULL, NULL, $8, yylineno);}
 	| vSYMBOL_ID '=' primary		 													{$$ = newVarDeclare($1, NULL, NULL, NULL, NULL, $3, yylineno);}
 	;
-
 integer_type_variable:
 	vSYMBOL_ID														{$$ = newIntegerTypeVarDeclare($1, NULL, NULL, NULL, NULL, NULL, yylineno);}
 //	| '[' expression ':' expression ']' vSYMBOL_ID					{$$ = newVarDeclare($6, $2, $4, NULL, NULL, NULL, yylineno); printf("%s", $6);}
@@ -274,16 +234,13 @@ integer_type_variable:
 //	| '[' expression ':' expression ']' vSYMBOL_ID '=' primary		{$$ = newVarDeclare($6, $2, $4, NULL, NULL, $8, yylineno);} // ONLY FOR PARAMETER
 	| vSYMBOL_ID '=' primary		 								{$$ = newIntegerTypeVarDeclare($1, NULL, NULL, NULL, NULL, $3, yylineno);} // ONLY FOR PARAMETER
 	;
-
 continuous_assign:
 	vASSIGN list_of_blocking_assignment ';'							{$$ = $2;}
 	;
-
 list_of_blocking_assignment:
 	list_of_blocking_assignment ',' blocking_assignment 			{$$ = newList_entry($1, $3);}
     |blocking_assignment                                            {$$ = newList(ASSIGN, $1);}
     ;
-
 // 3 Primitive Instances	{$$ = NULL;}
 gate_declaration:
 	vAND list_of_multiple_inputs_gate_declaration_instance ';'							{$$ = newGate(BITWISE_AND, $2, yylineno);}
@@ -294,60 +251,49 @@ gate_declaration:
 	| vXNOR list_of_multiple_inputs_gate_declaration_instance ';'						{$$ = newGate(BITWISE_XNOR, $2, yylineno);}
 	| vXOR list_of_multiple_inputs_gate_declaration_instance ';'						{$$ = newGate(BITWISE_XOR, $2, yylineno);}
 	;
-
 list_of_multiple_inputs_gate_declaration_instance:
 	list_of_multiple_inputs_gate_declaration_instance ',' multiple_inputs_gate_instance 	{$$ = newList_entry($1, $3);}
 	|multiple_inputs_gate_instance                                      					{$$ = newList(ONE_GATE_INSTANCE, $1);}
 	;
-
 list_of_single_input_gate_declaration_instance:
 	list_of_single_input_gate_declaration_instance ',' single_input_gate_instance			{$$ = newList_entry($1, $3);}
 	|single_input_gate_instance                                     					 	{$$ = newList(ONE_GATE_INSTANCE, $1);}
 	;
-
 single_input_gate_instance:
 	vSYMBOL_ID '(' expression ',' expression ')'				{$$ = newGateInstance($1, $3, $5, NULL, yylineno);}
 	| '(' expression ',' expression ')'							{$$ = newGateInstance(NULL, $2, $4, NULL, yylineno);}
 	;
-
 multiple_inputs_gate_instance:
     vSYMBOL_ID '(' expression ',' expression ',' list_of_multiple_inputs_gate_connections ')'	{$$ = newMultipleInputsGateInstance($1, $3, $5, $7, yylineno);}
 	| '(' expression ',' expression ',' list_of_multiple_inputs_gate_connections ')'			{$$ = newMultipleInputsGateInstance(NULL, $2, $4, $6, yylineno);}
 //	| vSYMBOL_ID '(' expression ',' expression ')'												{$$ = newGateInstance($1, $3, $5, NULL, yylineno);}
 //	| '(' expression ',' expression ')'															{$$ = newGateInstance(NULL, $2, $4, NULL, yylineno);}
 	;
-
 list_of_multiple_inputs_gate_connections: list_of_multiple_inputs_gate_connections ',' expression	{$$ = newList_entry($1, $3);}
 	| expression																					{$$ = newModuleConnection(NULL, $1, yylineno);}
 	;
-
 // 4 MOdule Instantiations	{$$ = NULL;}
 module_instantiation: vSYMBOL_ID list_of_module_instance ';' 		{$$ = newModuleInstance($1, $2, yylineno);}
 //	|   vSYMBOL_ID module_instance ',' module_instantiation ';'		{$$ = addNewModuleInstance($1, $2, yylineno);}
 	;
-
 list_of_module_instance:
 	list_of_module_instance ',' module_instance                           	{$$ = newList_entry($1, $3);}
 	|module_instance                                                      	{$$ = newList(ONE_MODULE_INSTANCE, $1);}
 	;
-
 // 4 Function Instantiations	{$$ = NULL;}
 	function_instantiation: vSYMBOL_ID function_instance 			{$$ = newFunctionInstance($1, $2, yylineno);}
 //  | '(' function_instantiation ')'								{$$ = $2;}
 // 	|   vSYMBOL_ID module_instance ',' module_instantiation ';'		{$$ = addNewModuleInstance($1, $2, yylineno);}
 	;
-
 function_instance:
 	'(' list_of_function_connections ')' 							{$$ = newFunctionNamedInstance($2, NULL, yylineno);}
 	;
-
 module_instance:
 	vSYMBOL_ID '(' list_of_module_connections ')' 												{$$ = newModuleNamedInstance($1, $3, NULL, yylineno);}
 	| '#' '(' list_of_module_parameters ')' vSYMBOL_ID '(' list_of_module_connections ')' 		{$$ = newModuleNamedInstance($5, $7, $3, yylineno); }
 	| vSYMBOL_ID '(' ')' 																		{$$ = newModuleNamedInstance($1, NULL, NULL, yylineno);}
 	| '#' '(' list_of_module_parameters ')' vSYMBOL_ID '(' ')' 									{$$ = newModuleNamedInstance($5, NULL, $3, yylineno);}
  	;
-
 list_of_function_connections:
 	list_of_function_connections ',' module_connection				{$$ = newList_entry($1, $3);}
 	| module_connection												{$$ = newfunctionList(MODULE_CONNECT_LIST, $1);}
@@ -356,31 +302,25 @@ list_of_module_connections:
 	list_of_module_connections ',' module_connection				{$$ = newList_entry($1, $3);}
 	| module_connection												{$$ = newList(MODULE_CONNECT_LIST, $1);}
 	;
-
 module_connection:
 	'.' vSYMBOL_ID '(' expression ')'								{$$ = newModuleConnection($2, $4, yylineno);}
 	| expression													{$$ = newModuleConnection(NULL, $1, yylineno);}
 	;
-
 list_of_module_parameters:
 	list_of_module_parameters ',' module_parameter					{$$ = newList_entry($1, $3);}
 	| module_parameter												{$$ = newList(MODULE_PARAMETER_LIST, $1);}
 	;
-
 module_parameter:
 	'.' vSYMBOL_ID '(' expression ')'					{$$ = newModuleParameter($2, $4, yylineno);}
 	| expression										{$$ = newModuleParameter(NULL, $1, yylineno);}
 	;
-
 // 5 Behavioral Statements	{$$ = NULL;}
 always:
 	vALWAYS delay_control statement 					{$$ = newAlways($2, $3, yylineno);}
 	;
-
 function_statement:
 	statement                               			{$$ = newAlways(NULL, $1, yylineno);}
 	;
-
 statement:
 	seq_block																					{$$ = $1;}
 	| blocking_assignment ';'																	{$$ = $1;}
@@ -392,68 +332,55 @@ statement:
 	| vWHILE '(' expression ')' statement  														{$$ = newWhile($3, $5, yylineno);}
 	| ';'																						{$$ = NULL;}
 	;
-
 list_of_specify_statement:
 	list_of_specify_statement specify_statement 						{$$ = newList_entry($1, $2);}
 	| specify_statement							                        {$$ = newList(SPECIFY_PAL_CONNECT_LIST, $1);}
     ;
-
 specify_statement:
     '(' parallel_connection ')' '=' primary ';'							{$$ = newParallelConnection($2, $5, yylineno);}
 	;
-
 blocking_assignment:
 	primary '=' expression 												{$$ = newBlocking($1, $3, yylineno);}
 	| primary '=' vDELAY_ID expression									{$$ = newBlocking($1, $4, yylineno);}
 	;
-
 non_blocking_assignment:
 	primary voLTE expression 								{$$ = newNonBlocking($1, $3, yylineno);}
 	| primary voLTE vDELAY_ID expression					{$$ = newNonBlocking($1, $4, yylineno);}
 	;
-
 parallel_connection:
 	primary voPAL expression 								{$$ = NULL;}
 	;
-
 case_item_list:
 	case_item_list case_items								{$$ = newList_entry($1, $2);}
 	| case_items											{$$ = newList(CASE_LIST, $1);}
 	;
-
 case_items:
 	expression ':' statement								{$$ = newCaseItem($1, $3, yylineno);}
 	| vDEFAULT ':' statement								{$$ = newDefaultCase($3, yylineno);}
 	;
-
 seq_block:
 	vBEGIN stmt_list vEND 									{$$ = $2;}
 	;
-
 stmt_list:
 	stmt_list statement 									{$$ = newList_entry($1, $2);}
 	| statement												{$$ = newList(BLOCK, $1);}
 	;
-
 delay_control:
 	'@' '(' event_expression_list ')' 						{$$ = $3;}
 	| '@' '*'												{$$ = NULL;}
 	| '@' '(' '*' ')'										{$$ = NULL;}
 	;
-
 // 7 Expressions	{$$ = NULL;}
 event_expression_list:
 	event_expression_list vOR event_expression				{$$ = newList_entry($1, $3);}
     | event_expression_list ',' event_expression	      	{$$ = newList_entry($1, $3);}
 	| event_expression										{$$ = newList(DELAY_CONTROL, $1);}
 	;
-
 event_expression:
 	primary											{$$ = $1;}
 	| vPOSEDGE vSYMBOL_ID							{$$ = newPosedgeSymbol($2, yylineno);}
 	| vNEGEDGE vSYMBOL_ID							{$$ = newNegedgeSymbol($2, yylineno);}
 	;
-
 expression:
 	primary													{$$ = $1;}
 	| '+' expression %prec UADD								{$$ = newUnaryOperation(ADD, $2, yylineno);}
@@ -495,7 +422,6 @@ expression:
 	| '(' expression ')'									{$$ = $2;}
 	| '{' expression '{' probable_expression_list '}' '}'	{$$ = newListReplicate( $2, $4 ); }
 	;
-
 primary:
   vINTEGRAL				                  {$$ = newNumberNode($1, LONG_LONG, UNSIGNED, yylineno);}
   | vUNSIGNED_DECIMAL				        {$$ = newNumberNode($1, DEC, UNSIGNED, yylineno);}
@@ -509,19 +435,18 @@ primary:
 	| vSYMBOL_ID											{$$ = newSymbolNode($1, yylineno);}
 	| vSYMBOL_ID '[' expression ']'							{$$ = newArrayRef($1, $3, yylineno);}
 	| vSYMBOL_ID '[' expression ']' '[' expression ']'		{$$ = newArrayRef2D($1, $3, $6, yylineno);}
+	| vSYMBOL_ID '[' expression vPlusColon expression ']'   {$$ = newRangePlusRef($1, $3, $5, yylineno);}
 	| vSYMBOL_ID '[' expression ':' expression ']'			{$$ = newRangeRef($1, $3, $5, yylineno);}
 	| vSYMBOL_ID '[' expression ':' expression ']' '[' expression ':' expression ']'	{$$ = newRangeRef2D($1, $3, $5, $8, $10, yylineno);}
 	| '{' probable_expression_list '}' 						{$$ = $2; ($2)->types.concat.num_bit_strings = -1;}
 	;
-
 probable_expression_list:
 	expression												{$$ = $1;}
 	| expression_list ',' expression						{$$ = newList_entry($1, $3); /* note this will be in order lsb = greatest to msb = 0 in the node child list */}
 	;
-
 expression_list:
 	expression_list ',' expression							{$$ = newList_entry($1, $3); /* note this will be in order lsb = greatest to msb = 0 in the node child list */}
 	| expression											{$$ = newList(CONCATENATE, $1);}
 	;
-
 %%
+

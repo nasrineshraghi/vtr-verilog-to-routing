@@ -1,5 +1,4 @@
 /*
-
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
 files (the "Software"), to deal in the Software without
@@ -8,10 +7,8 @@ copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the
 Software is furnished to do so, subject to the following
 conditions:
-
 The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -29,7 +26,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include "globals.h"
 #include "types.h"
-
 #include "ast_util.h"
 #include "parse_making_ast.h"
 #include "string_cache.h"
@@ -78,32 +74,24 @@ short to_view_parse;
 /*
  * File-scope function declarations
  */
-void graphVizOutputPreproc(FILE *yyin, std::string path, char *file);
+void graphVizOutputPreproc(FILE *yyin);
 ast_node_t *newFunctionAssigning(ast_node_t *expression1, ast_node_t *expression2, int line_number);
 ast_node_t *newHardBlockInstance(char* module_ref_name, ast_node_t *module_named_instance, int line_number);
 
 /*
  * Function implementations
  */
-void graphVizOutputPreproc(FILE *yyin, std::string path, char *file)
+void graphVizOutputPreproc(FILE *yyin)
 {
-	char line[MaxLine];
-	FILE *fp;
-	char *tmp;
+	std::string file_out = 	configuration.debug_output_path 
+							+ "/" 
+							+ strip_path_and_ext(configuration.list_of_file_names[current_parse_file]).c_str() 
+							+ "_preproc.v";
 
-	// strip the ".v" from file
-	tmp = strrchr(file, '.');
-	oassert(tmp);
-	oassert(*(tmp+1) == 'v');
-	*tmp = '\0';
-
-	// strip the path from file
-	tmp = strrchr(file, '/');
-	if (tmp) file = tmp;
-
-	sprintf(line, "%s/%s_preproc.v", path.c_str(), file);
-	fp = fopen(line, "w");
+	FILE *fp = fopen(file_out.c_str(), "w");
 	oassert(fp);
+
+	char line[MaxLine];
 	while (fgets(line, MaxLine, yyin))
 		fprintf(fp, "%s", line);
 	fclose(fp);
@@ -116,7 +104,6 @@ void graphVizOutputPreproc(FILE *yyin, std::string path, char *file)
  *-------------------------------------------------------------------------------------------*/
 void parse_to_ast()
 {
-	int i;
 	extern FILE *yyin;
 	extern int yylineno;
 
@@ -125,78 +112,45 @@ void parse_to_ast()
 
 	/* initialize the parser */
 	init_parser();
-
-	/* open files for parsing */
-	if (global_args.verilog_file != NULL)
+	
+	/* read all the files in the configuration file */
+	current_parse_file =0;
+	while (current_parse_file < configuration.list_of_file_names.size())
 	{
-		/* make a consitant file list so we can access in compiler ... replicating what read config does for the filenames */
-		configuration.list_of_file_names = (char**)vtr::calloc(1,sizeof(char*));
-		configuration.num_list_of_file_names = 1;
-		configuration.list_of_file_names[0] = global_args.verilog_file;
-
-		yyin = fopen(global_args.verilog_file, "r");
+		yyin = fopen(configuration.list_of_file_names[current_parse_file].c_str(), "r");
 		if (yyin == NULL)
 		{
-			error_message(-1, -1, -1, "cannot open file: %s", global_args.verilog_file.value());
+			error_message(-1, -1, -1, "cannot open file: %s\n", configuration.list_of_file_names[current_parse_file].c_str());
 		}
 
 		/*Testing preprocessor - Paddy O'Brien*/
+
+		/**
+		 *  TODO shouldnt we push defines throughout multiple files ? just like includes?
+		 * Verify documentation for this
+		*/
+
 		init_veri_preproc();
 		yyin = veri_preproc(yyin);
 		cleanup_veri_preproc();
 
 		/* write out the pre-processed file */
 		if (configuration.output_preproc_source)
-			graphVizOutputPreproc(yyin, configuration.debug_output_path.c_str(), configuration.list_of_file_names[0]) ;
+			graphVizOutputPreproc(yyin);
 
-		/* set the file name */
-		current_parse_file = 0;
+		/* reset the line count */
+		yylineno = 0;
 
 		/* setup the local parser structures for a file */
 		init_parser_for_file();
-		/* parse */
+		/* parse next file */
 		yyparse();
-		/* cleanup parser */
-		clean_up_parser_for_file();
 
 		fclose(yyin);
+		current_parse_file++;
 	}
-	else if (global_args.config_file != NULL)
-	{
-		/* read all the files in the configuration file */
-		for (i = 0; i < configuration.num_list_of_file_names; i++)
-		{
-			yyin = fopen(configuration.list_of_file_names[i], "r");
-			if (yyin == NULL)
-			{
-				error_message(-1, -1, -1, "cannot open file: %s\n", configuration.list_of_file_names[i]);
-			}
-
-			/*Testing preprocessor - Paddy O'Brien*/
-			init_veri_preproc();
-			yyin = veri_preproc(yyin);
-			cleanup_veri_preproc();
-
-			/* write out the pre-processed file */
-			if (configuration.output_preproc_source)
-				graphVizOutputPreproc(yyin, configuration.debug_output_path, configuration.list_of_file_names[i]) ;
-
-			/* set the file name */
-			current_parse_file = i;
-
-			/* reset the line count */
-			yylineno = 0;
-
-			/* setup the local parser structures for a file */
-			init_parser_for_file();
-			/* parse next file */
-			yyparse();
-			/* cleanup parser */
-			clean_up_parser_for_file();
-
-			fclose(yyin);
-		}
-	}
+	/* cleanup the defines hash */
+	sc_free_string_cache(defines_for_file_sc);
 
 	/* clean up all the structures in the parser */
 	cleanup_parser();
@@ -314,8 +268,7 @@ void init_parser_for_file()
  *-------------------------------------------------------------------------------------------*/
 void clean_up_parser_for_file()
 {
-	/* cleanup the defines hash */
-	sc_free_string_cache(defines_for_file_sc);
+
 }
 
 /*---------------------------------------------------------------------------------------------
@@ -874,6 +827,50 @@ ast_node_t *newRangeRef(char *id, ast_node_t *expression1, ast_node_t *expressio
 	return new_node;
 }
 
+int get_range_Plus_Colon(ast_node_t* first_node)
+{
+  long temp_value;
+
+  /* look at the first item to see if it has a range */
+  if (first_node->children[1] != NULL && first_node->children[1]->type == NUMBERS && first_node->children[2] != NULL && first_node->children[2]->type == NUMBERS)
+  {
+               if(first_node->children[1]->types.number.value >first_node->children[2]->types.number.value)
+               {
+
+                 error_message(NETLIST_ERROR, first_node->line_number, first_node->file_number, "Odin doesn't support arrays declared [m+:n] where n is less than m.");
+
+                 // swap them around
+                 temp_value = first_node->children[2]->types.number.value;
+                 first_node->children[2]->types.number.value = first_node->children[1]->types.number.value;
+                 first_node->children[1]->types.number.value = temp_value;
+               }
+
+    return abs(first_node->children[1]->types.number.value +first_node->children[2]->types.number.value) ;
+             }
+                      // should return X????
+           
+  return -1; // indicates no range
+}
+
+/*---------------------------------------------------------------------------------------------
+ * (function: newRangePlusRef)
+ *-------------------------------------------------------------------------------------------*/
+ast_node_t *newRangePlusRef(char *id, ast_node_t *expression1, ast_node_t *expression2, int line_number)
+{
+  /* allocate or check if there's a node for this */
+  ast_node_t *symbol_node = newSymbolNode(id, line_number);
+
+  /* create a node for this array reference */
+  ast_node_t* new_node = create_node_w_type(RANGE_REF, line_number, current_parse_file);
+
+  /* allocate child nodes to this node */
+  allocate_children_to_node(new_node, 3, symbol_node, expression1, expression2);
+
+  get_range_Plus_Colon(new_node);
+
+  return new_node;       
+}
+
 /*---------------------------------------------------------------------------------------------
  * (function: newBinaryOperation)
  *-------------------------------------------------------------------------------------------*/
@@ -1244,7 +1241,7 @@ ast_node_t *newFunctionNamedInstance(ast_node_t *module_connect_list, ast_node_t
     aux_name = (char *)vtr::calloc(char_qntd,sizeof(char));
     unique_name = (char *)vtr::calloc(char_qntd,sizeof(char));
     strcpy(unique_name,"function_instance_");
-    sprintf(aux_name,"%d",size_function_instantiations_by_module);
+    odin_sprintf(aux_name,"%d",size_function_instantiations_by_module);
     strcat(unique_name,aux_name);
 
     ast_node_t *symbol_node = newSymbolNode(unique_name, line_number);
@@ -1798,7 +1795,7 @@ void graphVizOutputAst(std::string path, ast_node_t *top)
 	static int file_num = 0;
 
 	/* open the file */
-	sprintf(path_and_file, "%s/%s_ast.dot", path.c_str(), top->children[0]->types.identifier);
+	odin_sprintf(path_and_file, "%s/%s_ast.dot", path.c_str(), top->children[0]->types.identifier);
 	fp = fopen(path_and_file, "w");
 	file_num++;
 

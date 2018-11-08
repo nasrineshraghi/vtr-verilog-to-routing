@@ -177,7 +177,7 @@ char* standardize_number(const char* input);
 
 	/*	unsupported Operators	*/
 <INITIAL>"&&&"				{ MP; return vNOT_SUPPORT;}
-<INITIAL>"+:"				{ MP; return vNOT_SUPPORT;}
+<INITIAL>"+:"				{ MP; return vPlusColon;}
 <INITIAL>"-:"				{ MP; return vNOT_SUPPORT;}
 <INITIAL>">>>"				{ MP; return vNOT_SUPPORT;}
 
@@ -235,3 +235,4 @@ char* standardize_number(const char* input)
 	input_number.erase(std::remove(input_number.begin(), input_number.end(), '_'), input_number.end());
 	return vtr::strdup(input_number.c_str());
 }
+

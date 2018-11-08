@@ -520,6 +520,37 @@ void make_concat_into_list_of_strings(ast_node_t *concat_top, char *instance_nam
 	}
 }
 
+/*---------------------------------------------------------------------------------------------
+ * (function: get_range_Plus_Colon)
+ *  Check the node range is legal. Will return the range legal range.
+ *  Node should have three children. Second and Third children's type should be NUMBERS.
+ *-------------------------------------------------------------------------------------------
+int get_range_Plus_Colon(ast_node_t* first_node)
+{
+	long temp_value;
+
+	/* look at the first item to see if it has a range */
+/*
+	if (first_node->children[1] != NULL && first_node->children[1]->type == NUMBERS && first_node->children[2] != NULL && first_node->children[2]->type == NUMBERS)
+	{
+           		if(first_node->children[1]->types.number.value >first_node->children[2]->types.number.value)
+		           {
+
+		           	error_message(NETLIST_ERROR, first_node->line_number, first_node->file_number, "Odin doesn't support arrays declared [m+:n] where n is less than m.");
+
+		           	// swap them around
+		           	temp_value = first_node->children[2]->types.number.value;
+		           	first_node->children[2]->types.number.value = first_node->children[1]->types.number.value;
+		           	first_node->children[1]->types.number.value = temp_value;
+	           	}
+
+		return abs(first_node->children[1]->types.number.value +first_node->children[2]->types.number.value) ;
+	           }
+                      // should return X????
+           
+	return -1; // indicates no range
+}
+*/
 /*---------------------------------------------------------------------------
  * (function: change_to_number_node)
  * change the original AST node to a NUMBER node or change the value of the node

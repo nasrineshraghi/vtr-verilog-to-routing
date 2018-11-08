@@ -268,6 +268,7 @@ typedef enum
 	MEMORY,
 	PAD_NODE,
 	HARD_IP,
+	PLUSCOLON,
 	GENERIC, /*added for the unknown node type */
 	FULLADDER
 } operation_list;
