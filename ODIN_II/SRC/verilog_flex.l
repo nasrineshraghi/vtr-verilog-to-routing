@@ -89,6 +89,8 @@ char* standardize_number(const char* input);
 <INITIAL>"xor"				{ MP; return vXOR;}
 <INITIAL>"macromodule"		{ MP; return vMODULE;}
 <INITIAL>"specparam"		{ MP; return vSPECPARAM;}
+<INITIAL>"signed"			{ MP; return vSIGNED;}
+
 
 
 
@@ -134,7 +136,6 @@ char* standardize_number(const char* input);
 <INITIAL>"rtranif0"			{ MP; return vNOT_SUPPORT;}
 <INITIAL>"rtranif1"			{ MP; return vNOT_SUPPORT;}
 <INITIAL>"small"			{ MP; return vNOT_SUPPORT;}
-<INITIAL>"signed"			{ MP; return vNOT_SUPPORT;}
 <INITIAL>"strong0"			{ MP; return vNOT_SUPPORT;}
 <INITIAL>"strong1"			{ MP; return vNOT_SUPPORT;}
 <INITIAL>"supply0"			{ MP; return vNOT_SUPPORT;}
