@@ -638,7 +638,7 @@ char *get_name_of_pin_at_bit(ast_node_t *var_node, int bit, char *instance_name_
 		oassert(rnode[1]->type == NUMBERS && rnode[2]->type == NUMBERS);
 		oassert((rnode[1]->types.number.value >= rnode[2]->types.number.value+bit) && bit >= 0);
 
-		return_string = make_full_ref_name(NULL, NULL, NULL, var_node->children[0]->types.identifier, rnode[1]->types.number.value+bit);
+		return_string = make_full_ref_name(NULL, NULL, NULL, var_node->children[0]->types.identifier, rnode[2]->types.number.value+bit);
 	}
 	else if (var_node->type == RANGE_PART_REF)
 	{
@@ -807,7 +807,7 @@ char_list_t *get_name_of_pins(ast_node_t *var_node, char *instance_name_prefix)
 		else
 		{
 			oassert(rnode[0]->type == NUMBERS);
-			return_string = get_name_of_pins_number(rnode[0], rnode[1]->types.number.value, width);
+			return_string = get_name_of_pins_number(rnode[0], rnode[2]->types.number.value, width);
 		}
 	}
 	else if (var_node->type == RANGE_PART_REF)

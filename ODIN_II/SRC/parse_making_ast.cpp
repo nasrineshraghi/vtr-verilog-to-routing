@@ -2049,6 +2049,7 @@ void graphVizOutputAst_traverse_node(FILE *fp, ast_node_t *node, ast_node_t *fro
 				break;
 			case RANGE_REF:
 				fprintf(fp, "\t%d [label=\"RANGE_REF\"];\n", my_label);
+				break;
 			case RANGE_PART_REF:
 				fprintf(fp, "\t%d [label=\"RANGE_PART_REF\"];\n", my_label);
 				break;
