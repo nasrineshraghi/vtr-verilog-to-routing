@@ -833,9 +833,9 @@ ast_node_t *newRangeRef(char *id, ast_node_t *expression1, ast_node_t *expressio
 
 
 /*---------------------------------------------------------------------------------------------
- * (function: newRangePlusRef)
+ * (function: newRangePartSelect)
  *-------------------------------------------------------------------------------------------*/
-ast_node_t *newRangePlusRef(char *id, ast_node_t *expression1, ast_node_t *expression2, char direction, int line_number)
+ast_node_t *newRangePartSelect(char *id, ast_node_t *expression1, ast_node_t *expression2, char direction, int line_number)
 {
 	/* allocate or check if there's a node for this */
 	ast_node_t *symbol_node = newSymbolNode(id, line_number);
