@@ -1125,9 +1125,9 @@ ast_node_t *newAlways(ast_node_t *delay_control, ast_node_t *statement, int line
 }
 
 /*---------------------------------------------------------------------------------------------
- * (function: newAssign)
+ * (function: Procedural_continuous_Assign)
  *-------------------------------------------------------------------------------------------*/
-ast_node_t *newAssign(ast_node_t *expression1, ast_node_t *expression2, int line_number)
+ast_node_t *procedural_continuous_assign(ast_node_t *expression1, ast_node_t *expression2, int line_number)
 {
 	/* create a node for this array reference */
 	ast_node_t* new_node = create_node_w_type(ASSIGN, line_number, current_parse_file);
@@ -1138,9 +1138,9 @@ ast_node_t *newAssign(ast_node_t *expression1, ast_node_t *expression2, int line
 }
 
 /*---------------------------------------------------------------------------------------------
- * (function: newDeassign)
+ * (function: Procedural_continuous_deassign)
  *-------------------------------------------------------------------------------------------*/
-ast_node_t *newDeassign(ast_node_t *expression, int line_number)
+ast_node_t *procedural_continuous_deassign(ast_node_t *expression, int line_number)
 {
 	/* create a node for this array reference */
 	ast_node_t* new_node = create_node_w_type(DEASSIGN, line_number, current_parse_file);

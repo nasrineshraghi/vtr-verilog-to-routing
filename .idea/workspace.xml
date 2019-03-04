@@ -36,7 +36,11 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cdbd13e4-84a6-4007-aa2d-907a588cb4aa" name="Default Changelist" comment="" />
+    <list default="true" id="cdbd13e4-84a6-4007-aa2d-907a588cb4aa" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/ODIN_II/SRC/include/parse_making_ast.h" beforeDir="false" afterPath="$PROJECT_DIR$/ODIN_II/SRC/include/parse_making_ast.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ODIN_II/SRC/parse_making_ast.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/ODIN_II/SRC/parse_making_ast.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ODIN_II/SRC/verilog_bison.y" beforeDir="false" afterPath="$PROJECT_DIR$/ODIN_II/SRC/verilog_bison.y" afterDir="false" />
+    </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -48,7 +52,7 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
+  <component name="ProjectFrameBounds" extendedState="7">
     <option name="x" value="-649" />
     <option name="y" value="89" />
     <option name="width" value="1910" />
@@ -280,7 +284,7 @@
     <option name="totallyTimeSpent" value="654000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="27" width="1920" height="1020" extended-state="6" />
+    <frame x="0" y="27" width="1920" height="1020" extended-state="7" />
     <layout>
       <window_info id="Favorites" side_tool="true" />
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.25" />
