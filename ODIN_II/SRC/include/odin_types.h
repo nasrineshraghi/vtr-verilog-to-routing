@@ -332,6 +332,7 @@ typedef enum
 	CASE_DEFAULT,
 	ALWAYS,
 	GENERATE,
+	DEASSIGN,
 	IF,
 	IF_Q,
 	FOR,

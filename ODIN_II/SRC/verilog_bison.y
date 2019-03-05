@@ -65,7 +65,7 @@ int yylex(void);
 %token vENDMODULE vENDSPECIFY vENDGENERATE vENDFUNCTION vIF vINOUT vINPUT vMODULE vGENERATE vFUNCTION
 %token vOUTPUT vPARAMETER vLOCALPARAM vPOSEDGE vREG vWIRE vXNOR vXOR vDEFPARAM voANDAND vNAND vNEGEDGE vNOR vNOT vOR vFOR
 %token voOROR voLTE voGTE voPAL voSLEFT voSRIGHT vo ASRIGHT voEQUAL voNOTEQUAL voCASEEQUAL
-%token voCASENOTEQUAL voXNOR voNAND voNOR vWHILE vINTEGER vCLOG2 vGENVAR
+%token voCASENOTEQUAL voXNOR voNAND voNOR vWHILE vINTEGER vCLOG2 vGENVAR vDEASSIGN
 %token vPLUS_COLON vMINUS_COLON vSPECPARAM
 %token '?' ':' '|' '^' '&' '<' '>' '+' '-' '*' '/' '%' '(' ')' '{' '}' '[' ']'
 %token vNOT_SUPPORT 
@@ -312,6 +312,8 @@ list_of_blocking_assignment:
 	| blocking_assignment					{$$ = newList(ASSIGN, $1);}
 	;
 
+
+
 // 3 Primitive Instances	{$$ = NULL;}
 gate_declaration:
 	vAND list_of_multiple_inputs_gate_declaration_instance ';'	{$$ = newGate(BITWISE_AND, $2, yylineno);}
@@ -417,15 +419,17 @@ generate_for:
 	; 
 
 statement:
-	seq_block										{$$ = $1;}
-	| blocking_assignment ';'								{$$ = $1;}
-	| non_blocking_assignment ';'								{$$ = $1;}
-	| vIF '(' expression ')' statement %prec LOWER_THAN_ELSE				{$$ = newIf($3, $5, NULL, yylineno);}
-	| vIF '(' expression ')' statement vELSE statement					{$$ = newIf($3, $5, $7, yylineno);}
-	| vCASE '(' expression ')' case_item_list vENDCASE					{$$ = newCase($3, $5, yylineno);}
-	| vFOR '(' blocking_assignment ';' expression ';' blocking_assignment ')' statement	{$$ = newFor($3, $5, $7, $9, yylineno);}
-	| vWHILE '(' expression ')' statement							{$$ = newWhile($3, $5, yylineno);}
-	| ';'											{$$ = NULL;}
+	seq_block																					{$$ = $1;}
+	| blocking_assignment ';'																	{$$ = $1;}
+	| non_blocking_assignment ';'																{$$ = $1;}
+	| vASSIGN primary '=' expression ';'														{$$ = procedural_continuous_assign($2, $4, yylineno);}
+	| vDEASSIGN primary ';'																		{$$ = procedural_continuous_deassign($2, yylineno);}
+	| vIF '(' expression ')' statement %prec LOWER_THAN_ELSE									{$$ = newIf($3, $5, NULL, yylineno);}
+	| vIF '(' expression ')' statement vELSE statement 											{$$ = newIf($3, $5, $7, yylineno);}
+	| vCASE '(' expression ')' case_item_list vENDCASE											{$$ = newCase($3, $5, yylineno);}
+	| vFOR '(' blocking_assignment ';' expression ';' blocking_assignment ')' statement 		{$$ = newFor($3, $5, $7, $9, yylineno);}
+	| vWHILE '(' expression ')' statement  														{$$ = newWhile($3, $5, yylineno);}
+	| ';'																						{$$ = NULL;}
 	;
 
 list_of_specify_items:
@@ -447,13 +451,13 @@ specparam_declaration:
 	;
 
 blocking_assignment:
-	primary '=' expression			{$$ = newBlocking($1, $3, yylineno);}
-	| primary '=' vDELAY_ID expression	{$$ = newBlocking($1, $4, yylineno);}
+	primary '=' expression 												{$$ = newBlocking($1, $3, yylineno);}
+	| primary '=' vDELAY_ID expression									{$$ = newBlocking($1, $4, yylineno);}
 	;
 
 non_blocking_assignment:
-	primary voLTE expression		{$$ = newNonBlocking($1, $3, yylineno);}
-	| primary voLTE vDELAY_ID expression	{$$ = newNonBlocking($1, $4, yylineno);}
+	primary voLTE expression 								{$$ = newNonBlocking($1, $3, yylineno);}
+	| primary voLTE vDELAY_ID expression					{$$ = newNonBlocking($1, $4, yylineno);}
 	;
 
 parallel_connection:
