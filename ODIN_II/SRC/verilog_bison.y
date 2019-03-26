@@ -117,7 +117,7 @@ int yylex(void);
 %type <node> specify_block list_of_specify_items specify_item specparam_declaration
 %type <node> specify_pal_connect_declaration
 %type <node> initial_block parallel_connection list_of_blocking_assignment
-
+%type <node> procedural_continuous_assignment variable_asssignemt
 %%
 
 // 1 Source Text
@@ -422,8 +422,7 @@ statement:
 	seq_block																					{$$ = $1;}
 	| blocking_assignment ';'																	{$$ = $1;}
 	| non_blocking_assignment ';'																{$$ = $1;}
-	| vASSIGN primary '=' expression ';'														{$$ = procedural_continuous_assign($2, $4, yylineno);}
-	| vDEASSIGN primary ';'																		{$$ = procedural_continuous_deassign($2, yylineno);}
+	| procedural_continuous_assignment ';'														{$$ = $1;}
 	| vIF '(' expression ')' statement %prec LOWER_THAN_ELSE									{$$ = newIf($3, $5, NULL, yylineno);}
 	| vIF '(' expression ')' statement vELSE statement 											{$$ = newIf($3, $5, $7, yylineno);}
 	| vCASE '(' expression ')' case_item_list vENDCASE											{$$ = newCase($3, $5, yylineno);}
@@ -459,6 +458,14 @@ non_blocking_assignment:
 	primary voLTE expression 								{$$ = newNonBlocking($1, $3, yylineno);}
 	| primary voLTE vDELAY_ID expression					{$$ = newNonBlocking($1, $4, yylineno);}
 	;
+
+procedural_continuous_assignment:
+	vASSIGN variable_asssignemt								{$$ = $2;}
+	vDEASSIGN primary										{$$ = Procedural_continuous_deassign($2, yylineno);}
+
+variable_asssignemt:
+	primary '=' expression									{$$ = newBlocking($1, $3, yylineno);}
+
 
 parallel_connection:
 	primary voPAL expression	{$$ = NULL;}

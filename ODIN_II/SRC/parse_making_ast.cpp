@@ -1304,7 +1304,7 @@ ast_node_t *newGenerate(ast_node_t *instantiations, int line_number)
  *-------------------------------------------------------------------------------------------*/
 ast_node_t *procedural_continuous_assign(ast_node_t *expression1, ast_node_t *expression2, int line_number)
 {
-	/* create a node for this array reference */
+	
 	ast_node_t* new_node = create_node_w_type(ASSIGN, line_number, current_parse_file);
 	/* allocate child nodes to this node */
 	allocate_children_to_node(new_node, 2, expression1, expression2);
@@ -1317,10 +1317,9 @@ ast_node_t *procedural_continuous_assign(ast_node_t *expression1, ast_node_t *ex
  *-------------------------------------------------------------------------------------------*/
 ast_node_t *procedural_continuous_deassign(ast_node_t *expression, int line_number)
 {
-	/* create a node for this array reference */
 	ast_node_t* new_node = create_node_w_type(DEASSIGN, line_number, current_parse_file);
 	/* allocate child nodes to this node */
-	allocate_children_to_node(new_node, 2, expression);
+	allocate_children_to_node(new_node, 1, expression);
 
 	return new_node;
 }
