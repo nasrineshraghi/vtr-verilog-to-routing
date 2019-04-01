@@ -117,7 +117,7 @@ int yylex(void);
 %type <node> specify_block list_of_specify_items specify_item specparam_declaration
 %type <node> specify_pal_connect_declaration
 %type <node> initial_block parallel_connection list_of_blocking_assignment
-%type <node> procedural_continuous_assignment variable_asssignemt
+%type <node> procedural_continuous_assignment variable_asssignemt list_of_variable_asssignemt
 %%
 
 // 1 Source Text
@@ -461,7 +461,7 @@ non_blocking_assignment:
 
 procedural_continuous_assignment:
 	vASSIGN list_of_variable_asssignemt									{$$ = $2;}
-	| vDEASSIGN primary													{$$ = Procedural_continuous_deassign($2, yylineno);}
+//	| vDEASSIGN primary													{$$ = Procedural_continuous_deassign($2, yylineno);}
 	;
 
 list_of_variable_asssignemt:
