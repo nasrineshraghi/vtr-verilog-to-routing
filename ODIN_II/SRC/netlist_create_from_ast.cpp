@@ -913,6 +913,12 @@ signal_list_t *netlist_expand_ast_of_module(ast_node_t* node, char *instance_nam
 				type_of_circuit = COMBINATIONAL;
 				circuit_edge = UNDEFINED_SENSITIVITY;
 				break;
+
+			case PROCEDURAL_ASSIGN:
+				/* sequential path */
+				return_sig_list = assignment_alias(node, instance_name_prefix);
+				skip_children = TRUE;
+				break;
 			case BLOCKING_STATEMENT:
 			case NON_BLOCKING_STATEMENT:
 			{
@@ -4380,7 +4386,7 @@ signal_list_t *create_operation_node(ast_node_t *op, signal_list_t **input_lists
 }
 
 /*---------------------------------------------------------------------------------------------
- * (function: evaluate_sensitivity_list)
+ * (function: FALLING_EDGE_SENSITIVITY)
  *-------------------------------------------------------------------------------------------*/
 signal_list_t *evaluate_sensitivity_list(ast_node_t *delay_control, char *instance_name_prefix)
 {
