@@ -1305,7 +1305,7 @@ ast_node_t *newGenerate(ast_node_t *instantiations, int line_number)
 ast_node_t *procedural_continuous_assign(ast_node_t *expression1, ast_node_t *expression2, int line_number)
 {
 	
-	ast_node_t* new_node = create_node_w_type(PROCEDURAL_ASSIGN, line_number, current_parse_file);
+	ast_node_t* new_node = create_node_w_type(PROC_CONT_ASSIGN, line_number, current_parse_file);
 	/* allocate child nodes to this node */
 	allocate_children_to_node(new_node, 2, expression1, expression2);
 
