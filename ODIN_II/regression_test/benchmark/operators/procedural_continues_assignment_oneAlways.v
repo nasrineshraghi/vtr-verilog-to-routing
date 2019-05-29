@@ -1,28 +1,29 @@
-module PCA (reset, set, a, q);
+module simple_op(reset, set, a, q);
 
-	input reset;
-	input set;
-	input a;
+    input reset;
+    input set;
+    input a;
 
-	output q; 
+    output q;
 
-	reg q;
+    reg q;
 
-	always @ (*)
-	begin 
-		if (reset)
-		assign =1'b0;
+    always @(*)
+        begin
+            if (reset)
+                assign q = 1'b0;
 
-		else
+            else
 
-		   if (set)
-		   assign = 1'b1;
+            if (set)
+                assign q = 1'b1;
 
-		   else
-		   begin
-		   deassign q;
-		   
-		   q <= a; 
-	end
+            else
+                begin
+                    deassign q;
+
+                    q <= a;
+                end
+        end
 
 endmodule
