@@ -921,9 +921,7 @@ signal_list_t *netlist_expand_ast_of_module(ast_node_t* node, char *instance_nam
 				break;
 
 			case DEASSIGN:
-				/* sequential path */
-				/* TODO: Remove the assignment */
-				//return_sig_list = assignment_alias(node, instance_name_prefix);
+				return_sig_list = init_signal_list();
 				skip_children = TRUE;
 				break;	
 				

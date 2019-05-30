@@ -1398,7 +1398,6 @@ void simplify_pc_assignments() {
 					assignment->type = BLOCKING_STATEMENT;
 			}
         }
-
     }
 
 }
