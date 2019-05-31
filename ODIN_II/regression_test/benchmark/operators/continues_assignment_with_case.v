@@ -5,8 +5,10 @@ module mux_case(out,cntrl);
 	output out;
 
 	reg out;
+
  
 always @ (*)
+
 	case (cntrl)
 
 		2'b00 : out = 0;
@@ -15,5 +17,6 @@ always @ (*)
 		2'b11 : out = 1;
 
 	endcase
+
 
 endmodule

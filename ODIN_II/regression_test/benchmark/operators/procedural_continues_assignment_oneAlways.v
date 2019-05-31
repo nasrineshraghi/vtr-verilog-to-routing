@@ -14,8 +14,8 @@ module simple_op(reset, set, a, q);
                 assign q = 1'b0;
 
             else
-
             if (set)
+
                 assign q = 1'b1;
 
             else
