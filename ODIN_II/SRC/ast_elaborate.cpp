@@ -40,6 +40,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <vector>
 #include <stack>
+#include <odin_types.h>
 
 #define read_node  1
 #define write_node 2
@@ -1663,7 +1664,9 @@ void simplify_pc_assignments2() {
 
     for (long m = 0; m < num_modules; m++)
     {
+
         auto module = ast_modules[m];
+        //graphVizOutputAst("./temp", module);
         std::map<std::string, assignment_info> assignments;
 
         for (long i = 0; i < module->children[2]->num_children; i++) {
@@ -1719,6 +1722,10 @@ void simplify_pc_assignments2() {
                 continue;
 
             auto ifQ_node = newIfQuestion(second.condition->children[0], second.pc->children[1], second.p->children[1], 0);
+            if (second.condition->children[0]->types.operation.op == LOGICAL_NOT)
+            {
+                second.condition->children[0]->types.operation.op = BITWISE_NOT;
+            }
             ast_node_t *node = nullptr;
             if (second.p->type == BLOCKING_STATEMENT)
                 node = newBlocking(second.id, ifQ_node, 0);
@@ -1740,13 +1747,14 @@ void simplify_pc_assignments2() {
             second.p_always->children[1]->children[0] = node; //FIXME: leakage
             second.p_always->children[1]->num_children = 1;
         }
-        //graphVizOutputAst("./temp",module);
+        graphVizOutputAst("./temp",module);
     }
 
 }
 
 void simplify_pc_assignments() {
-
+    simplify_pc_assignments2();
+    return;
     for (long m = 0; m < num_modules; m++)
     {
         auto module = ast_modules[m];
