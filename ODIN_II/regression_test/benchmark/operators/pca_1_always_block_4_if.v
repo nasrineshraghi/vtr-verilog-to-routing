@@ -2,14 +2,14 @@ module simple_op(reset,set1,set2, set, a, q);
 
     input reset;
     input set;
-	     input set1;
-	     input set2;
-
+    input set1;
+    input set2;
     input a;
 
     output q;
 
     reg q;
+
 
 always @(*)
 begin
@@ -32,7 +32,9 @@ begin
 					else
                 begin
                   deassign q;
+
+
                 end
-        end
+end
 
 endmodule

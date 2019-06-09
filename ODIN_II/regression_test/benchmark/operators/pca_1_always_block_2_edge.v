@@ -22,7 +22,7 @@ module simple_op(reset, set, a, q);
                 begin
                     deassign q;
 
-                    q <= a;
+
                 end
         end
 
