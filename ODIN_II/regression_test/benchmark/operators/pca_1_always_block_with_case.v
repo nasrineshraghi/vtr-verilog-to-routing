@@ -1,4 +1,6 @@
-module mux_case(out,cntrl);
+module mux_case(out,
+	cntrl
+);
 
 	input [1:0]cntrl;
 

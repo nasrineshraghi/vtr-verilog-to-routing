@@ -1,29 +1,34 @@
-module FlipflopAssign ( reset, din, clk, qout);
+module FlipflopAssign ( reset, 
+	din, 
+	clk, 
+	qout
+);
 
-	output qout;
 
 	input reset;
 	input din;
 	input clk;
 
-	always @ (reset) 
-	begin
+	output qout;
+
+always @ (reset) 
+begin
 
 	if (reset)
-
 		assign qout = 0;
 
 	else 
 
 		deassign qout;
 
-	end
+end
 
-	always @ (posedge clk) 
-	begin
+
+always @ (posedge clk) 
+begin
 
 		qout = din;
 
-	end
+end
 
 endmodule
