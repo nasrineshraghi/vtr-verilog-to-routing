@@ -1,4 +1,8 @@
-module assig (RST, STATE, CLOCK, DATA_IN); 
+module assig (RST, 
+	STATE, 
+	CLOCK, 
+	DATA_IN
+); 
 
 	input RST; 
 	input CLOCK; 
@@ -9,24 +13,28 @@ module assig (RST, STATE, CLOCK, DATA_IN);
 	reg  STATE; 
 	 
 always @ ( RST )
- 
-   if( RST ) 
-   begin 
+begin
+	if( RST ) 
+	begin 
 
-	assign STATE = 1'b0;
+		assign STATE = 1'b0;
  
-   end else 
-   begin 
+	end 
+	else 
+	begin 
 
-	deassign STATE;
+		deassign STATE;
  
-   end 
-  
+	end 
+end  
+
+
 always @ ( posedge CLOCK ) 
-   begin 
+begin 
 
-	STATE = DATA_IN; 
+		STATE = DATA_IN; 
 
-  end 
+end 
  
+
 endmodule 

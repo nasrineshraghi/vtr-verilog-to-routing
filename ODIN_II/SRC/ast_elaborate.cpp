@@ -1296,7 +1296,7 @@ void simplify_pc_assignments2() {
     {
 
         auto module = ast_modules[m];
-        //graphVizOutputAst("./temp", module);
+        
         std::map<std::string, assignment_info> assignments;
 
         for (long i = 0; i < module->children[2]->num_children; i++) {
@@ -1315,7 +1315,7 @@ void simplify_pc_assignments2() {
                         name = assignment->children[0]->types.identifier;
                         break;
                     default:
-                        // Not implemented
+                        
                         continue;
                 }
 
@@ -1346,7 +1346,7 @@ void simplify_pc_assignments2() {
         }
         for (auto &info: assignments)
         {
-            //TODO: Check info is complete
+            
             auto second = info.second;
             if (second.pc == nullptr || second.p == nullptr || second.condition == nullptr)
                 continue;
@@ -1374,10 +1374,10 @@ void simplify_pc_assignments2() {
                 }
             }
             module->children[2]->num_children--;
-            second.p_always->children[1]->children[0] = node; //FIXME: leakage
+            second.p_always->children[1]->children[0] = node; 
             second.p_always->children[1]->num_children = 1;
         }
-        graphVizOutputAst("./temp",module);
+        //graphVizOutputAst("./temp",module);
     }
 
 }

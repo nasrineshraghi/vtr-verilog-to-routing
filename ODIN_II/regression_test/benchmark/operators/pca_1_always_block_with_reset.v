@@ -1,20 +1,26 @@
-module simple_op(reset, set, a, q);
+module simple_op(reset, 
+	set, 
+	a, 
+	q
+);
 
-    input reset;
-    input set;
-    input a;
+	input reset;
+	input set;
+	input a;
 
-    output q;
+	output q;
+	reg q;
 
-    reg q;
+always @(*)
+begin
 
-    always @(*)
-        begin
-            if (reset)
-                assign q = 1'b0;
+	if (reset)
+		assign q = 1'b0;
 
-            else
-                deassign q;
-        end
+
+	else
+		deassign q;
+
+end
 
 endmodule

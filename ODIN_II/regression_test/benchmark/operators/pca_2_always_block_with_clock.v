@@ -1,23 +1,35 @@
-module dff(q, d, clear, preset, clock);
+module dff(q, 
+	d, 
+	clear, 
+	preset, 
+	clock
+);
 
-    output q;
+	output q;
 
-    input d, clear, preset, clock;
-    reg q;
+	input d, clear, preset, clock;
+	reg q;
 
-    always @(clear or preset)
-        if (!clear)
-            assign q = 0;
+always @(clear or preset)
 
-        else if (!preset)
-            assign q = 1;
+	if (!clear)
+		assign q = 0;
 
-        else
-            deassign q;
+	else 
+		if (!preset)
+			assign q = 1;
 
 
-    always @(posedge clock)
-        begin
-            q = d;
-        end
+			else
+				deassign q;
+
+
+always @(posedge clock)
+begin
+
+		q = d;
+
+end
+
+
 endmodule
