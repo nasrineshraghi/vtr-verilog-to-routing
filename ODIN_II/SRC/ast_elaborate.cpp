@@ -67,9 +67,6 @@ void remove_generate(ast_node_t *node)
 		ast_node_t* candidate = node->children[i];
 		ast_node_t* body_parent = nullptr;
 
-	/*  */
-	simplify_pc_assignments();
-
 		if(candidate->type == GENERATE){
 			for(int j = 0; j<candidate->num_children; j++){
 				ast_node_t* new_child = ast_node_deep_copy(candidate->children[j]);
