@@ -97,6 +97,8 @@ char* standardize_number(const char* input);
 <INITIAL>"xor"				{ MP; return vXOR;}
 <INITIAL>"macromodule"		{ MP; return vMODULE;}
 <INITIAL>"specparam"		{ MP; return vSPECPARAM;}
+<INITIAL>"endtask"			{ MP; return vENDTASK;}
+<INITIAL>"task"				{ MP; return vTASK;}
 
 
 	/*	unsupported Keywords	*/
