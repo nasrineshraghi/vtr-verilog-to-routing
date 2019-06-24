@@ -665,8 +665,8 @@ void create_internal_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 	}
 	else
 	{
-		/* assign the node type by seeing the name */
-		operation_list node_type = (operation_list)assign_node_type_from_node_name(names[input_count-1]);
+		/* TODO: to remove assign the node type by seeing the name */
+		operation_list node_type = GENERIC ; // (operation_list)assign_node_type_from_node_name(names[input_count-1]);
 
 		if(node_type != GENERIC)
 		{
@@ -792,7 +792,7 @@ operation_list read_bit_map_find_unknown_gate(int input_count, nnode_t *node, FI
 		else if (!ptr)              return GND_NODE;
 		else                        return VCC_NODE;
 	}
-
+	
 	char **bit_map = NULL;
 	char *output_bit_map = NULL;// to distinguish whether for the bit_map output is 1 or 0
 	int line_count_bitmap = 0; //stores the number of lines in a particular bit map
